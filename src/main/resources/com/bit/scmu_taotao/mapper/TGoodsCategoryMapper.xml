@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bit.scmu_taotao.mapper.TGoodsCategoryMapper">
+
+    <resultMap id="BaseResultMap" type="com.bit.scmu_taotao.entity.TGoodsCategory">
+            <id property="categoryId" column="category_id" />
+            <result property="categoryName" column="category_name" />
+            <result property="sort" column="sort" />
+            <result property="isShow" column="is_show" />
+            <result property="createTime" column="create_time" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        category_id,category_name,sort,is_show,create_time
+    </sql>
+</mapper>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bit.scmu_taotao.mapper.ChatMessageMapper">
+
+    <resultMap id="BaseResultMap" type="com.bit.scmu_taotao.entity.ChatMessage">
+            <id property="msgId" column="msg_id" />
+            <result property="chatId" column="chat_id" />
+            <result property="sendId" column="send_id" />
+            <result property="receiveId" column="receive_id" />
+            <result property="tradeId" column="trade_id" />
+            <result property="msgType" column="msg_type" />
+            <result property="msgContent" column="msg_content" />
+            <result property="isRead" column="is_read" />
+            <result property="createTime" column="create_time" />
+            <result property="isDelete" column="is_delete" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        msg_id,chat_id,send_id,receive_id,trade_id,msg_type,
+        msg_content,is_read,create_time,is_delete
+    </sql>
+</mapper>

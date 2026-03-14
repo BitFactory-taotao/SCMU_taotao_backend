@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bit.scmu_taotao.mapper.TEvaluateMapper">
+
+    <resultMap id="BaseResultMap" type="com.bit.scmu_taotao.entity.TEvaluate">
+            <id property="evalId" column="eval_id" />
+            <result property="tradeId" column="trade_id" />
+            <result property="goodsId" column="goods_id" />
+            <result property="buyerId" column="buyer_id" />
+            <result property="sellerId" column="seller_id" />
+            <result property="descScore" column="desc_score" />
+            <result property="commScore" column="comm_score" />
+            <result property="totalScore" column="total_score" />
+            <result property="evalContent" column="eval_content" />
+            <result property="isAnonymous" column="is_anonymous" />
+            <result property="createTime" column="create_time" />
+            <result property="isDelete" column="is_delete" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        eval_id,trade_id,goods_id,buyer_id,seller_id,desc_score,
+        comm_score,total_score,eval_content,is_anonymous,create_time,
+        is_delete
+    </sql>
+</mapper>

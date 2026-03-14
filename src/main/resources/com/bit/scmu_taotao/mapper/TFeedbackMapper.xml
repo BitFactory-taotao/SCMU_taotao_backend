@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bit.scmu_taotao.mapper.TFeedbackMapper">
+
+    <resultMap id="BaseResultMap" type="com.bit.scmu_taotao.entity.TFeedback">
+            <id property="feedbackId" column="feedback_id" />
+            <result property="userId" column="user_id" />
+            <result property="feedbackContent" column="feedback_content" />
+            <result property="feedbackStatus" column="feedback_status" />
+            <result property="replyContent" column="reply_content" />
+            <result property="replyTime" column="reply_time" />
+            <result property="createTime" column="create_time" />
+            <result property="updateTime" column="update_time" />
+            <result property="isDelete" column="is_delete" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        feedback_id,user_id,feedback_content,feedback_status,reply_content,reply_time,
+        create_time,update_time,is_delete
+    </sql>
+</mapper>

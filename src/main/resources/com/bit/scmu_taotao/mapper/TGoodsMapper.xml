@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bit.scmu_taotao.mapper.TGoodsMapper">
+
+    <resultMap id="BaseResultMap" type="com.bit.scmu_taotao.entity.TGoods">
+            <id property="goodsId" column="goods_id" />
+            <result property="userId" column="user_id" />
+            <result property="categoryId" column="category_id" />
+            <result property="goodsType" column="goods_type" />
+            <result property="goodsName" column="goods_name" />
+            <result property="goodsNote" column="goods_note" />
+            <result property="goodsDesc" column="goods_desc" />
+            <result property="price" column="price" />
+            <result property="useScene" column="use_scene" />
+            <result property="exchangePlace" column="exchange_place" />
+            <result property="goodsStatus" column="goods_status" />
+            <result property="createTime" column="create_time" />
+            <result property="updateTime" column="update_time" />
+            <result property="isDelete" column="is_delete" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        goods_id,user_id,category_id,goods_type,goods_name,goods_note,
+        goods_desc,price,use_scene,exchange_place,goods_status,
+        create_time,update_time,is_delete
+    </sql>
+</mapper>

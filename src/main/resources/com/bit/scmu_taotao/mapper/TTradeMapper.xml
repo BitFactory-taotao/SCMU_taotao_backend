@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bit.scmu_taotao.mapper.TTradeMapper">
+
+    <resultMap id="BaseResultMap" type="com.bit.scmu_taotao.entity.TTrade">
+            <id property="tradeId" column="trade_id" />
+            <result property="goodsId" column="goods_id" />
+            <result property="sellerId" column="seller_id" />
+            <result property="buyerId" column="buyer_id" />
+            <result property="tradePrice" column="trade_price" />
+            <result property="tradePlace" column="trade_place" />
+            <result property="tradeTime" column="trade_time" />
+            <result property="createTime" column="create_time" />
+            <result property="updateTime" column="update_time" />
+            <result property="isDelete" column="is_delete" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        trade_id,goods_id,seller_id,buyer_id,trade_price,trade_place,
+        trade_time,create_time,update_time,is_delete
+    </sql>
+</mapper>
