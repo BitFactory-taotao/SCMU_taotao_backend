@@ -4,52 +4,72 @@ import lombok.Data;
 import org.apache.http.client.CookieStore;
 
 public class UserContext {
-    //静态内部类，用于存储用户信息，让user的信息通过ThreadLocal来传递
-    //这样可以避免在每个方法中都传递用户信息，而是通过ThreadLocal来传递用户信息
+    // ThreadLocal用于存储当前登录用户的 userId
+    private final static ThreadLocal<String> USER_ID_CONTEXT = new ThreadLocal<>();
+
+    // ThreadLocal用于存储用户信息（原有逻辑保留，但增加 userId 的快捷存取）
     @Data
-    static
-    class UserInfo{
-        private String openid;
+    static class UserInfo {
+        private String userId;
         private CookieStore cookieStore;
-        private Integer id;
         private String username;
         private String password;
-        //构造方法
-        public UserInfo(String openid, CookieStore cookieStore, Integer id,String username, String password){
-            this.openid = openid;
+
+
+        public UserInfo(CookieStore cookieStore,String username, String password, String userId) {
             this.cookieStore = cookieStore;
-            this.id = id;
             this.username = username;
             this.password = password;
+            this.userId = userId;
         }
     }
 
-    //ThreadLocal用于存储用户信息
     private final static ThreadLocal<UserInfo> CONTEXT = new ThreadLocal<>();
-    //ThreadLocal.set
-    public static void set(String openid, CookieStore cookieStore,
-                           Integer id,String username, String password) {
-        UserInfo userInfo = new UserInfo(openid, cookieStore,id, username, password);
+
+    /**
+     * 设置当前登录用户 ID
+     */
+    public static void setUserId(String userId) {
+        USER_ID_CONTEXT.set(userId);
+    }
+
+    /**
+     * 获取当前登录用户 ID
+     */
+    public static String getUserId() {
+        return USER_ID_CONTEXT.get();
+    }
+
+    // ThreadLocal.set (保留并增强)
+    public static void set(CookieStore cookieStore, String username, String password, String userId) {
+        UserInfo userInfo = new UserInfo(cookieStore,username, password, userId);
         CONTEXT.set(userInfo);
+        USER_ID_CONTEXT.set(userId);
     }
-    //ThreadLocal.get
-    public static String getOpenid() {
-        return CONTEXT.get().getOpenid();
+
+    // 兼容旧方法的 set
+    public static void set(CookieStore cookieStore, String username, String password) {
+        set(cookieStore, username, password, null);
     }
+
     public static CookieStore getCookieStore() {
-        return CONTEXT.get().getCookieStore();
+        UserInfo userInfo = CONTEXT.get();
+        return userInfo != null ? userInfo.getCookieStore() : null;
     }
+
     public static String getUsername() {
-        return CONTEXT.get().getUsername();
+        UserInfo userInfo = CONTEXT.get();
+        return userInfo != null ? userInfo.getUsername() : null;
     }
+
     public static String getPassword() {
-        return CONTEXT.get().getPassword();
+        UserInfo userInfo = CONTEXT.get();
+        return userInfo != null ? userInfo.getPassword() : null;
     }
-    public static Integer getId() {
-        return CONTEXT.get().getId();
-    }
-    //ThreadLocal.remove
+
+    // ThreadLocal.remove
     public static void remove() {
         CONTEXT.remove();
+        USER_ID_CONTEXT.remove();
     }
 }
