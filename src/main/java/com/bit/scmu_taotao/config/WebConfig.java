@@ -22,8 +22,7 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(loginInterceptor)
                 .addPathPatterns("/**") // 拦截所有路径
                 .excludePathPatterns(
-                        "/user/login",      // 登录接口放行
-                        "/user/register",   // 注册接口放行（如果有）
+                        "/login",           // 登录接口放行
                         "/error",           // 错误页面放行
                         "/static/**",       // 静态资源放行
                         "/favicon.ico"      // 图标放行

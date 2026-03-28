@@ -1,6 +1,9 @@
 server:
   port: 8080
 spring:
+  mvc:
+    servlet:
+      path: /api/v1/campus-taotao
   application:
     name: taotao
   datasource:
