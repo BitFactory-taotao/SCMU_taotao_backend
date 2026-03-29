@@ -6,10 +6,10 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.bit.scmu_taotao.util.common.Result;
 
 /**
-* @author 35314
-* @description 针对表【t_user(用户基础信息表)】的数据库操作 Service
-* @createDate 2026-03-12 18:35:11
-*/
+ * @author 35314
+ * @description 针对表【t_user(用户基础信息表)】的数据库操作 Service
+ * @createDate 2026-03-12 18:35:11
+ */
 public interface TUserService extends IService<TUser> {
 
     /**

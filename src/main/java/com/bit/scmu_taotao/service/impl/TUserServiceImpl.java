@@ -20,27 +20,24 @@ import com.bit.scmu_taotao.util.common.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.CookieStore;
 import org.apache.http.impl.client.BasicCookieStore;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
 /**
-* @author 35314
-* @description 针对表【t_user(用户基础信息表)】的数据库操作 Service 实现
-* @createDate 2026-03-12 18:35:11
-*/
+ * @author 35314
+ * @description 针对表【t_user(用户基础信息表)】的数据库操作 Service 实现
+ * @createDate 2026-03-12 18:35:11
+ */
 @Slf4j
 @Service
 public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
-    implements TUserService{
+        implements TUserService{
 
     @Autowired
     private RedisService redisService;
@@ -82,7 +79,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             // 1. 通过 WebVPN 进行身份验证
             CookieStore cookieStore = new BasicCookieStore();
             WebVpnLoginThread loginThread = new WebVpnLoginThread(
-                userId, password, cookieStore, WEBVPN_URL, redisService
+                    userId, password, cookieStore, WEBVPN_URL, redisService
             );
 
             // 执行同步登录
@@ -394,8 +391,8 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         try {
             LambdaQueryWrapper<TGoodsImage> imageQuery = new LambdaQueryWrapper<>();
             imageQuery.eq(TGoodsImage::getGoodsId, goodsId)
-                     .orderByAsc(TGoodsImage::getSort)
-                     .last("LIMIT 1");
+                    .orderByAsc(TGoodsImage::getSort)
+                    .last("LIMIT 1");
 
             TGoodsImage goodsImage = goodsImageService.getOne(imageQuery);
             return goodsImage != null ? goodsImage.getImageUrl() : null;
@@ -416,8 +413,8 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             // 2. 查询用户作为买家的交易记录
             LambdaQueryWrapper<TTrade> tradeQuery = new LambdaQueryWrapper<>();
             tradeQuery.eq(TTrade::getBuyerId, userId)
-                     .eq(TTrade::getIsDelete, 0)
-                     .orderByDesc(TTrade::getTradeTime);
+                    .eq(TTrade::getIsDelete, 0)
+                    .orderByDesc(TTrade::getTradeTime);
 
             Page<TTrade> tradePage = new Page<>(page, size);
             Page<TTrade> resultPage = tradeService.page(tradePage, tradeQuery);

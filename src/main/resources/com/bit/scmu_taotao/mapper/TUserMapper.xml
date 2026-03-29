@@ -15,51 +15,8 @@
             <result property="isDelete" column="is_delete" />
     </resultMap>
 
-    <!-- 基础查询列 -->
     <sql id="Base_Column_List">
         user_id,user_name,avatar,credit_score,credit_star,create_time,
         update_time,is_delete
     </sql>
-    
-    <!-- 通过 ID 查询用户 -->
-    <select id="selectById" parameterType="java.lang.String" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List" />
-        FROM t_user
-        WHERE user_id = #{userId}
-        AND (is_delete = 0 OR is_delete IS NULL)
-    </select>
-    
-    <!-- 插入用户 -->
-    <insert id="insert" parameterType="com.bit.scmu_taotao.entity.TUser">
-        INSERT INTO t_user (
-            user_id,
-            user_name,
-            avatar,
-            credit_score,
-            credit_star,
-            create_time,
-            update_time,
-            is_delete
-        ) VALUES (
-            #{userId},
-            #{userName},
-            #{avatar},
-            #{creditScore},
-            #{creditStar},
-            #{createTime},
-            #{updateTime},
-            #{isDelete}
-        )
-    </insert>
-    
-    <!-- 更新用户 -->
-    <update id="updateById" parameterType="com.bit.scmu_taotao.entity.TUser">
-        UPDATE t_user
-        SET user_name = #{userName},
-            avatar = #{avatar},
-            credit_score = #{creditScore},
-            credit_star = #{creditStar},
-            update_time = #{updateTime}
-        WHERE user_id = #{userId}
-    </update>
 </mapper>
