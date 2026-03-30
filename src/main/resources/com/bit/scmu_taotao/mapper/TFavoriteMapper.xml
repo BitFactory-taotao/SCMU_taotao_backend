@@ -15,4 +15,33 @@
     <sql id="Base_Column_List">
         favorite_id,user_id,goods_id,create_time,is_delete
     </sql>
+
+    <!-- 基础查询 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_favorite
+        <where>
+            <if test="ew != null and ew.sqlSegment != null and ew.sqlSegment != ''">
+                ${ew.sqlSegment}
+            </if>
+        </where>
+    </select>
+
+    <!-- 插入 -->
+    <insert id="insert" parameterType="com.bit.scmu_taotao.entity.TFavorite">
+        INSERT INTO t_favorite (
+            <include refid="Base_Column_List"/>
+        ) VALUES (
+            #{favoriteId},
+            #{userId},
+            #{goodsId},
+            #{createTime},
+            #{isDelete}
+        )
+    </insert>
+
+    <!-- 根据 ID 删除 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM t_favorite WHERE favorite_id = #{favoriteId}
+    </delete>
 </mapper>
