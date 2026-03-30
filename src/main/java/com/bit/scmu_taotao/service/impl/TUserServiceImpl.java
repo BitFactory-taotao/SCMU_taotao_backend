@@ -7,6 +7,7 @@ import com.bit.scmu_taotao.client.HttpResponseHandler;
 import com.bit.scmu_taotao.client.HttpResponseHandlerImpl;
 import com.bit.scmu_taotao.client.HttpResponseResult;
 import com.bit.scmu_taotao.client.thread.WebVpnLoginThread;
+import com.bit.scmu_taotao.dto.goods.PublisherDTO;
 import com.bit.scmu_taotao.entity.TUser;
 import com.bit.scmu_taotao.mapper.TUserMapper;
 import com.bit.scmu_taotao.service.RedisService;
@@ -187,6 +188,26 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             log.error("获取用户信息失败：{}", e.getMessage(), e);
             return Result.fail("获取用户信息失败，请稍后重试");
         }
+    }
+    @Override
+    public PublisherDTO getPublisherInfo(String userId) {
+        // 查询用户信息
+        TUser user = this.getById(userId);
+        if (user == null) {
+            return null;
+        }
+
+        // 构建发布者信息DTO
+        PublisherDTO publisher = new PublisherDTO();
+        publisher.setId(user.getUserId());
+        publisher.setName(user.getUserName());
+        publisher.setCreditScore(user.getCreditScore());
+        // 将 BigDecimal 转换为 Double
+        if (user.getCreditStar() != null) {
+            publisher.setCreditStar(user.getCreditStar().doubleValue());
+        }
+
+        return publisher;
     }
 }
 

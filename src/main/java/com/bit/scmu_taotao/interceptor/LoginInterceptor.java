@@ -32,7 +32,7 @@ public class LoginInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         // 1. 获取 Token
         String token = request.getHeader("Authorization");
-        log.info("拦截到请求：{}，Token：{}", request.getRequestURI(), token);
+        log.info("收到请求：{}，Token：{}", request.getRequestURI(), token);
 
         // 2. 校验 Token
         if (token != null && !token.isEmpty()) {

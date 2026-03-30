@@ -6,6 +6,8 @@ import com.bit.scmu_taotao.service.TGoodsImageService;
 import com.bit.scmu_taotao.mapper.TGoodsImageMapper;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 /**
 * @author 35314
 * @description 针对表【t_goods_image(商品图片关联表)】的数据库操作Service实现
@@ -14,7 +16,15 @@ import org.springframework.stereotype.Service;
 @Service
 public class TGoodsImageServiceImpl extends ServiceImpl<TGoodsImageMapper, TGoodsImage>
     implements TGoodsImageService{
-
+    @Override
+    public List<String> getGoodsImageUrls(Long goodsId) {
+        // 调用mapper方法查询商品图片列表
+        List<TGoodsImage> goodsImages = baseMapper.selectByGoodsId(goodsId.intValue());
+        // 提取图片URL到新列表
+        return goodsImages.stream()
+                .map(TGoodsImage::getImageUrl)
+                .collect(java.util.stream.Collectors.toList());
+    }
 }
 
 

@@ -1,25 +1,33 @@
 server:
   port: 8080
 spring:
+  mvc:
+    servlet:
+      path: /api/v1/campus-taotao
   application:
     name: taotao
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://127.0.0.1:3306/taotao_db?useSSL=false&serverTimezone=UTC
     username: root
-    password: xie060106
+    password: 123456
   jackson:
     default-property-inclusion: non_null
   data:
     redis:
       host: localhost
       port: 6379
-      password: dev123456
+#      password: dev123456
       lettuce:
         pool:
           max-active: 8
           max-idle: 8
           min-idle: 0
+  # 上传限制
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 20MB
 # MyBatis-Plus 配置
 mybatis-plus:
   mapper-locations: classpath:com/bit/scmu_taotao/mapper/**/*.xml
@@ -32,4 +40,15 @@ mybatis-plus:
       id-type: auto
 logging:
   level:
-    com.hmdp: debug
+    com.bit.scmu_taotao: debug
+storage:
+  s3:
+#    endpoint: http://localhost:9000
+    endpoint: http://aijiu.f1.luyouxia.net:15927
+    region: us-east-1
+    bucket: taotao
+    access-key: taotao
+    secret-key: taotao123456
+    path-style-access: true
+    max-file-size: 5MB
+    allowed-types: [jpg, jpeg, png, webp]

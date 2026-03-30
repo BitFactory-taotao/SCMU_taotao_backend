@@ -15,4 +15,12 @@
     <sql id="Base_Column_List">
         image_id,goods_id,image_url,sort,create_time
     </sql>
+
+    <select id="selectByGoodsId" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from t_goods_image
+        where goods_id = #{goodsId}
+        order by sort asc
+    </select>
 </mapper>

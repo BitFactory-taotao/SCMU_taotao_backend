@@ -26,4 +26,5 @@
         goods_desc,price,use_scene,exchange_place,goods_status,
         create_time,update_time,is_delete
     </sql>
+
 </mapper>

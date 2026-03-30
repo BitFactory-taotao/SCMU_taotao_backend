@@ -1,5 +1,6 @@
 package com.bit.scmu_taotao.service;
 
+import com.bit.scmu_taotao.dto.goods.PublisherDTO;
 import com.bit.scmu_taotao.entity.TUser;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.bit.scmu_taotao.util.common.Result;
@@ -32,4 +33,6 @@ public interface TUserService extends IService<TUser> {
      * @return 用户信息
      */
     Result getUserInfoByToken(String token);
+
+    PublisherDTO getPublisherInfo(String userId);
 }

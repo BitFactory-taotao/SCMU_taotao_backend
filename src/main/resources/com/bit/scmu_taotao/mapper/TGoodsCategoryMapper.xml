@@ -15,4 +15,5 @@
     <sql id="Base_Column_List">
         category_id,category_name,sort,is_show,create_time
     </sql>
+
 </mapper>
