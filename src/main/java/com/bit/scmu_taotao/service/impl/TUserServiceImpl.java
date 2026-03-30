@@ -10,6 +10,7 @@ import com.bit.scmu_taotao.client.HttpResponseHandlerImpl;
 import com.bit.scmu_taotao.client.HttpResponseResult;
 import com.bit.scmu_taotao.client.thread.WebVpnLoginThread;
 import com.bit.scmu_taotao.dto.GoodsEditRequest;
+import com.bit.scmu_taotao.dto.goods.PublisherDTO;
 import com.bit.scmu_taotao.entity.*;
 import com.bit.scmu_taotao.mapper.TUserMapper;
 import com.bit.scmu_taotao.service.*;
@@ -20,6 +21,8 @@ import com.bit.scmu_taotao.util.common.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.CookieStore;
 import org.apache.http.impl.client.BasicCookieStore;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -810,6 +813,26 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             log.error("删除商品异常，goodsId: {}", goodsId, e);
             return Result.fail("删除失败，系统异常");
         }
+    }
+    @Override
+    public PublisherDTO getPublisherInfo(String userId) {
+        // 查询用户信息
+        TUser user = this.getById(userId);
+        if (user == null) {
+            return null;
+        }
+
+        // 构建发布者信息DTO
+        PublisherDTO publisher = new PublisherDTO();
+        publisher.setId(user.getUserId());
+        publisher.setName(user.getUserName());
+        publisher.setCreditScore(user.getCreditScore());
+        // 将 BigDecimal 转换为 Double
+        if (user.getCreditStar() != null) {
+            publisher.setCreditStar(user.getCreditStar().doubleValue());
+        }
+
+        return publisher;
     }
 }
 

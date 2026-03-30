@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Set;
@@ -44,7 +45,7 @@ public class ImageUploadServiceImpl implements ImageUploadService {
                 goodsImage.setGoodsId(goodsId);
                 goodsImage.setImageUrl(imageUrl);
                 goodsImage.setSort(0);
-                goodsImage.setCreateTime(new Date());
+                goodsImage.setCreateTime(LocalDateTime.now());
                 goodsImageService.save(goodsImage);
             }
 
