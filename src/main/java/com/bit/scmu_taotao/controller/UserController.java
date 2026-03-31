@@ -106,4 +106,17 @@ public class UserController {
     public Result deleteGoods(@PathVariable Long goodsId) {
         return tUserService.deleteGoods(goodsId);
     }
+    /**
+     * 获取他人个人主页信息
+     * @param userId 目标用户ID
+     * @return 用户主页信息，包含用户基本信息、商品列表、评价列表等
+     */
+    @GetMapping("/{userId}/home")
+    public Result getUserHome(@PathVariable String userId) {
+        if (userId == null || userId.trim().isEmpty()) {
+            return Result.fail(400, "用户ID不能为空");
+        }
+        log.info("获取用户主页信息：userId={}", userId);
+        return tUserService.getUserHomeInfo(userId);
+    }
 }

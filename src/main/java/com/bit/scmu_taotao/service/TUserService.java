@@ -2,6 +2,7 @@ package com.bit.scmu_taotao.service;
 
 import com.bit.scmu_taotao.dto.goods.PublisherDTO;
 import com.bit.scmu_taotao.dto.GoodsEditRequest;
+import com.bit.scmu_taotao.dto.goods.PublisherDTO;
 import com.bit.scmu_taotao.entity.TUser;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.bit.scmu_taotao.util.common.Result;
@@ -76,6 +77,8 @@ public interface TUserService extends IService<TUser> {
      * @return 删除结果
      */
     Result deleteGoods(Long goodsId);
+
+    Result getUserHomeInfo(String userId);
 
     PublisherDTO getPublisherInfo(String userId);
 }

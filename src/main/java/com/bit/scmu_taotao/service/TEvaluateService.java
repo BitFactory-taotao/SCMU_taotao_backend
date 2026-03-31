@@ -1,7 +1,10 @@
 package com.bit.scmu_taotao.service;
 
+import com.bit.scmu_taotao.dto.TradeEvaluateSubmitRequest;
 import com.bit.scmu_taotao.entity.TEvaluate;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.bit.scmu_taotao.util.common.Result;
+import jakarta.validation.Valid;
 
 /**
 * @author 35314
@@ -10,4 +13,5 @@ import com.baomidou.mybatisplus.extension.service.IService;
 */
 public interface TEvaluateService extends IService<TEvaluate> {
 
+    Result submitTradeEvaluate(@Valid TradeEvaluateSubmitRequest request);
 }
