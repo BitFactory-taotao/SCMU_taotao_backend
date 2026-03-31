@@ -811,7 +811,170 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             return Result.fail("删除失败，系统异常");
         }
     }
+
+    @Override
+    public Result getUserHomeInfo(String userId) {
+        try {
+            if (userId == null || userId.trim().isEmpty()) {
+                return Result.fail(400, "用户ID参数错误");
+            }
+
+            log.info("获取用户主页信息：userId={}", userId);
+
+            // 1. 查询目标用户信息
+            TUser targetUser = this.getById(userId);
+            if (targetUser == null || targetUser.getIsDelete() == 1) {
+                log.warn("用户不存在或已删除：userId={}", userId);
+                return Result.fail(404, "用户不存在");
+            }
+
+            // 2. 构建用户基本信息
+            Map<String, Object> userInfo = new HashMap<>();
+            userInfo.put("id", targetUser.getUserId());
+            userInfo.put("name", targetUser.getUserName());
+            userInfo.put("creditScore", targetUser.getCreditScore() != null ? targetUser.getCreditScore() : 100);
+            userInfo.put("creditStar", targetUser.getCreditStar() != null ? targetUser.getCreditStar() : new BigDecimal("5.0"));
+
+            // 3. 查询用户的商品（分类）
+            LambdaQueryWrapper<TGoods> goodsWrapper = new LambdaQueryWrapper<>();
+            goodsWrapper.eq(TGoods::getUserId, userId)
+                    .eq(TGoods::getIsDelete, 0)
+                    .orderByDesc(TGoods::getCreateTime);
+            List<TGoods> allGoods = goodsService.list(goodsWrapper);
+
+            // 3.1 分离出售商品和预购商品
+            List<TGoods> sellGoods = new ArrayList<>();
+            List<TGoods> buyGoods = new ArrayList<>();
+            for (TGoods goods : allGoods) {
+                if (goods.getGoodsType() != null && goods.getGoodsType() == 1) {
+                    sellGoods.add(goods);
+                } else if (goods.getGoodsType() != null && goods.getGoodsType() == 2) {
+                    buyGoods.add(goods);
+                }
+            }
+
+            // 3.2 按状态分类出售商品
+            List<TGoods> sellOnline = new ArrayList<>();
+            List<TGoods> sellSold = new ArrayList<>();
+            for (TGoods goods : sellGoods) {
+                if (goods.getGoodsStatus() != null && goods.getGoodsStatus() == 0) { // online
+                    sellOnline.add(goods);
+                } else if (goods.getGoodsStatus() != null && goods.getGoodsStatus() == 1) { // sold
+                    sellSold.add(goods);
+                }
+            }
+
+            // 3.3 过滤预购在线商品
+            List<TGoods> buyOnline = buyGoods.stream()
+                    .filter(g -> g.getGoodsStatus() != null && g.getGoodsStatus() == 0)
+                    .collect(Collectors.toList());
+
+            // 4. 批量查询商品图片
+            List<Long> allGoodsIds = allGoods.stream().map(TGoods::getGoodsId).toList();
+            Map<Long, String> imageMap = new HashMap<>();
+            if (!allGoodsIds.isEmpty()) {
+                // TODO N+1问题：这里循环调用getGoodsMainImage方法，实际会导致N+1查询。后续可以优化为一次查询所有图片，存入Map中再取用，提示性能。
+                for (Long goodsId : allGoodsIds) {
+                    imageMap.put(goodsId, getGoodsMainImage(goodsId));
+                }
+            }
+
+            // 5. 组装商品数据
+            List<Map<String, Object>> sellOnlineList = buildGoodsList(sellOnline, imageMap);
+            List<Map<String, Object>> sellSoldList = buildGoodsList(sellSold, imageMap);
+            List<Map<String, Object>> buyOnlineList = buildGoodsList(buyOnline, imageMap);
+
+            // 6. 查询用户的评价（被评价）
+            LambdaQueryWrapper<TEvaluate> evalWrapper = new LambdaQueryWrapper<>();
+            evalWrapper.eq(TEvaluate::getSellerId, userId)
+                    .eq(TEvaluate::getIsDelete, 0)
+                    .orderByDesc(TEvaluate::getCreateTime);
+            List<TEvaluate> evaluates = evaluateService.list(evalWrapper);
+
+            // 7. 查询评价者信息（批量）
+            Set<String> evaluatorIds = new HashSet<>();
+            for (TEvaluate eval : evaluates) {
+                if (eval.getSellerId().equals(userId)) {
+                    evaluatorIds.add(eval.getBuyerId());
+                }
+            }
+            Map<String, TUser> evaluatorMap = new HashMap<>();
+            if (!evaluatorIds.isEmpty()) {
+                evaluatorMap = this.listByIds(new ArrayList<>(evaluatorIds)).stream()
+                        .collect(Collectors.toMap(TUser::getUserId, u -> u));
+            }
+
+            // 8. 构建评价列表
+            List<Map<String, Object>> evaluateList = new ArrayList<>();
+            double totalScore = 0;
+            for (TEvaluate eval : evaluates) {
+                // 确定评价者（对匿名评价特殊处理）
+                String evaluatorId = eval.getBuyerId();
+                String evaluatorName = "匿名用户";
+                if (eval.getIsAnonymous() == 0) {  // 非匿名
+                    TUser evaluator = evaluatorMap.get(evaluatorId);
+                    evaluatorName = evaluator != null ? evaluator.getUserName() : "未知用户";
+                }
+
+                Map<String, Object> evalItem = new HashMap<>();
+                evalItem.put("evalId", eval.getEvalId());
+                evalItem.put("totalScore", eval.getTotalScore() != null ? eval.getTotalScore() : 0);
+                evalItem.put("descScore", eval.getDescScore() != null ? eval.getDescScore() : 0);
+                evalItem.put("commScore", eval.getCommScore() != null ? eval.getCommScore() : 0);
+                evalItem.put("evalContent", eval.getEvalContent() != null ? eval.getEvalContent() : "");
+                evalItem.put("createTime", eval.getCreateTime());
+                evalItem.put("buyerName", evaluatorName);
+
+                evaluateList.add(evalItem);
+                totalScore += (eval.getTotalScore() != null ? eval.getTotalScore() : 0);
+            }
+
+            // 9. 计算评价统计
+            int evaluateCount = evaluates.size();
+            BigDecimal avgScore = BigDecimal.ZERO;
+            if (evaluateCount > 0) {
+                avgScore = BigDecimal.valueOf(totalScore / evaluateCount).setScale(2, java.math.RoundingMode.HALF_UP);
+            }
+
+            // 10. 构建完整返回数据
+            Map<String, Object> goodsMap = new HashMap<>();
+            goodsMap.put("sellOnline", sellOnlineList);
+            goodsMap.put("sellSold", sellSoldList);
+            goodsMap.put("buyOnline", buyOnlineList);
+
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("userInfo", userInfo);
+            responseData.put("goods", goodsMap);
+            responseData.put("evaluates", evaluateList);
+            responseData.put("evaluateCount", evaluateCount);
+            responseData.put("avgScore", avgScore);
+
+            log.info("获取用户主页信息成功：userId={}, evaluateCount={}, avgScore={}", userId, evaluateCount, avgScore);
+            return Result.ok("请求成功", responseData);
+
+        } catch (Exception e) {
+            log.error("获取用户主页信息失败：userId={}, error={}", userId, e.getMessage(), e);
+            return Result.fail("获取用户主页信息失败，请稍后重试");
+        }
+    }
+
+    /**
+     * 辅助方法：构建商品列表
+     */
+    private List<Map<String, Object>> buildGoodsList(List<TGoods> goods, Map<Long, String> imageMap) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (TGoods g : goods) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", g.getGoodsId());
+            item.put("name", g.getGoodsName());
+            item.put("remark", g.getGoodsNote() != null ? g.getGoodsNote() : "");
+            item.put("price", g.getPrice());
+            item.put("imgUrl", imageMap.getOrDefault(g.getGoodsId(), ""));
+            item.put("publishTime", g.getCreateTime());
+            item.put("publisherName", "");  // 主页中所有商品都是该用户的，所以直接放空
+            item.put("publisherId", g.getUserId());
+            result.add(item);
+        }
+        return result;
+    }
 }
-
-
-

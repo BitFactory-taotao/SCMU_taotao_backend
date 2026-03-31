@@ -75,4 +75,6 @@ public interface TUserService extends IService<TUser> {
      * @return 删除结果
      */
     Result deleteGoods(Long goodsId);
+
+    Result getUserHomeInfo(String userId);
 }
