@@ -1,4 +1,4 @@
-package com.bit.scmu_taotao.Controller;
+package com.bit.scmu_taotao.controller;
 
 import com.bit.scmu_taotao.dto.GoodsEditRequest;
 import com.bit.scmu_taotao.service.TUserService;
