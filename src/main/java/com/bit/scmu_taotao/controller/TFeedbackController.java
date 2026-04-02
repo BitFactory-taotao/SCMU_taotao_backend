@@ -21,16 +21,16 @@ public class TFeedbackController {
 
     @PostMapping("/feedback")
     public Result submitFeedback(@Valid @RequestBody FeedbackSubmitRequest request,
-                         BindingResult bindingResult) {
-      if (bindingResult.hasErrors()) {
-              String msg = bindingResult.getFieldError() != null
-                              ? bindingResult.getFieldError().getDefaultMessage()
-                               : "参数错误";
-               return Result.fail(400, msg);
-           }
-      log.info("提交反馈请求：contentLength={}", request.getContent().length());
-      return feedbackService.submitFeedback(request);
-   }
+                                 BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            String msg = bindingResult.getFieldError() != null
+                    ? bindingResult.getFieldError().getDefaultMessage()
+                    : "参数错误";
+            return Result.fail(400, msg);
+        }
+        log.info("提交反馈请求：contentLength={}", request.getContent().length());
+        return feedbackService.submitFeedback(request);
+    }
 
     @GetMapping("/feedback")
     public Result getFeedbackList(@Valid FeedbackPageRequest query,

@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Map;
@@ -327,15 +328,65 @@ public class GoodsController {
         if (userId == null) {
             return Result.fail(401, "用户未登录");
         }
-        // 2. 创建收藏记录
+        long gid = (long) goodsId;
+        // 2. 查询是否已有收藏记录（包含已删除）
+        LambdaQueryWrapper<TFavorite> query = new LambdaQueryWrapper<>();
+        query.eq(TFavorite::getUserId, userId)
+                .eq(TFavorite::getGoodsId, gid)
+                .last("LIMIT 1");
+        TFavorite existed = tFavoriteService.getOne(query);
+
+        // 3. 去重处理
+        if (existed != null) {
+            // 已收藏，直接返回
+            if (Integer.valueOf(0).equals(existed.getIsDelete())) {
+                return Result.ok("已收藏，无需重复操作", null);
+            }
+            // 历史记录被取消过，恢复收藏
+            existed.setIsDelete(0);
+            tFavoriteService.updateById(existed);
+            return Result.ok("收藏成功", null);
+        }
+        // 4. 创建收藏记录
         TFavorite favorite = new TFavorite();
         favorite.setUserId(userId);
-        favorite.setGoodsId((long) goodsId);
+        favorite.setGoodsId(gid);
         favorite.setIsDelete(0);
-        // 3. 保存到数据库
+        // 5. 保存到数据库
         tFavoriteService.save(favorite);
-        // 4. 返回成功响应
+        // 6. 返回成功响应
         return Result.ok("收藏成功", null);
+    }
+
+    @DeleteMapping("/{goodsId}/favorite")
+    public Result unfavorite(@PathVariable("goodsId") @Min(1) int goodsId) {
+        // 1. 获取当前登录用户的 userId
+        String userId = UserContext.getUserId();
+        if (userId == null) {
+            return Result.fail(401, "用户未登录");
+        }
+
+        long gid = (long) goodsId;
+
+        // 2. 查询当前有效收藏记录
+        LambdaQueryWrapper<TFavorite> query = new LambdaQueryWrapper<>();
+        query.eq(TFavorite::getUserId, userId)
+                .eq(TFavorite::getGoodsId, gid)
+                .eq(TFavorite::getIsDelete, 0)
+                .last("LIMIT 1");
+        TFavorite existed = tFavoriteService.getOne(query);
+
+        // 3. 幂等处理：没找到也返回取消成功
+        if (existed == null) {
+            return Result.ok("取消收藏成功", null);
+        }
+
+        // 4. 软删除收藏记录
+        existed.setIsDelete(1);
+        tFavoriteService.updateById(existed);
+
+        // 5. 返回成功响应
+        return Result.ok("取消收藏成功", null);
     }
 
     @GetMapping("/{goodsId}/trade")

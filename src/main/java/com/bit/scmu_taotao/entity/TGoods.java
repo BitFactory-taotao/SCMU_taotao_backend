@@ -11,9 +11,10 @@ import lombok.Data;
 
 /**
  * 商品信息表
+ *
  * @TableName t_goods
  */
-@TableName(value ="t_goods")
+@TableName(value = "t_goods")
 @Data
 public class TGoods {
     /**
@@ -72,6 +73,7 @@ public class TGoods {
      */
     private Integer goodsStatus;
 
+    private Integer viewCount; // 新增：商品点击量
     /**
      * 发布时间
      */
@@ -104,19 +106,19 @@ public class TGoods {
         }
         TGoods other = (TGoods) that;
         return (this.getGoodsId() == null ? other.getGoodsId() == null : this.getGoodsId().equals(other.getGoodsId()))
-            && (this.getUserId() == null ? other.getUserId() == null : this.getUserId().equals(other.getUserId()))
-            && (this.getCategoryId() == null ? other.getCategoryId() == null : this.getCategoryId().equals(other.getCategoryId()))
-            && (this.getGoodsType() == null ? other.getGoodsType() == null : this.getGoodsType().equals(other.getGoodsType()))
-            && (this.getGoodsName() == null ? other.getGoodsName() == null : this.getGoodsName().equals(other.getGoodsName()))
-            && (this.getGoodsNote() == null ? other.getGoodsNote() == null : this.getGoodsNote().equals(other.getGoodsNote()))
-            && (this.getGoodsDesc() == null ? other.getGoodsDesc() == null : this.getGoodsDesc().equals(other.getGoodsDesc()))
-            && (this.getPrice() == null ? other.getPrice() == null : this.getPrice().equals(other.getPrice()))
-            && (this.getUseScene() == null ? other.getUseScene() == null : this.getUseScene().equals(other.getUseScene()))
-            && (this.getExchangePlace() == null ? other.getExchangePlace() == null : this.getExchangePlace().equals(other.getExchangePlace()))
-            && (this.getGoodsStatus() == null ? other.getGoodsStatus() == null : this.getGoodsStatus().equals(other.getGoodsStatus()))
-            && (this.getCreateTime() == null ? other.getCreateTime() == null : this.getCreateTime().equals(other.getCreateTime()))
-            && (this.getUpdateTime() == null ? other.getUpdateTime() == null : this.getUpdateTime().equals(other.getUpdateTime()))
-            && (this.getIsDelete() == null ? other.getIsDelete() == null : this.getIsDelete().equals(other.getIsDelete()));
+                && (this.getUserId() == null ? other.getUserId() == null : this.getUserId().equals(other.getUserId()))
+                && (this.getCategoryId() == null ? other.getCategoryId() == null : this.getCategoryId().equals(other.getCategoryId()))
+                && (this.getGoodsType() == null ? other.getGoodsType() == null : this.getGoodsType().equals(other.getGoodsType()))
+                && (this.getGoodsName() == null ? other.getGoodsName() == null : this.getGoodsName().equals(other.getGoodsName()))
+                && (this.getGoodsNote() == null ? other.getGoodsNote() == null : this.getGoodsNote().equals(other.getGoodsNote()))
+                && (this.getGoodsDesc() == null ? other.getGoodsDesc() == null : this.getGoodsDesc().equals(other.getGoodsDesc()))
+                && (this.getPrice() == null ? other.getPrice() == null : this.getPrice().equals(other.getPrice()))
+                && (this.getUseScene() == null ? other.getUseScene() == null : this.getUseScene().equals(other.getUseScene()))
+                && (this.getExchangePlace() == null ? other.getExchangePlace() == null : this.getExchangePlace().equals(other.getExchangePlace()))
+                && (this.getGoodsStatus() == null ? other.getGoodsStatus() == null : this.getGoodsStatus().equals(other.getGoodsStatus()))
+                && (this.getCreateTime() == null ? other.getCreateTime() == null : this.getCreateTime().equals(other.getCreateTime()))
+                && (this.getUpdateTime() == null ? other.getUpdateTime() == null : this.getUpdateTime().equals(other.getUpdateTime()))
+                && (this.getIsDelete() == null ? other.getIsDelete() == null : this.getIsDelete().equals(other.getIsDelete()));
     }
 
     @Override

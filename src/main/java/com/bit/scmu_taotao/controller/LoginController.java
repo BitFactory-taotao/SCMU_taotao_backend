@@ -22,6 +22,7 @@ public class LoginController {
 
     /**
      * 用户登录接口
+     *
      * @param request 登录请求，包含用户名和密码
      * @return 登录结果，包含 token 和用户真实姓名
      */
@@ -43,6 +44,7 @@ public class LoginController {
 
     /**
      * 用户登出接口
+     *
      * @param token Token（从请求头获取）
      * @return 登出结果
      */
@@ -62,6 +64,7 @@ public class LoginController {
 
     /**
      * 获取当前登录用户信息
+     *
      * @return 用户信息
      */
     @GetMapping("/userInfo")

@@ -17,4 +17,6 @@ public interface TBlacklistService extends IService<TBlacklist> {
     Result getBlacklistPage(@NotNull(message = "page不能为空") @Min(value = 1, message = "page必须大于等于1") Integer page, @NotNull(message = "size不能为空") @Min(value = 1, message = "size必须大于等于1") @Max(value = 100, message = "size不能超过100") Integer size);
 
     Result removeBlacklist(String userId);
+
+    Result addBlacklist(String userId);
 }

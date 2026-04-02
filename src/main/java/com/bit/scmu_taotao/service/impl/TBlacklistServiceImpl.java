@@ -8,6 +8,7 @@ import com.bit.scmu_taotao.entity.TUser;
 import com.bit.scmu_taotao.mapper.TUserMapper;
 import com.bit.scmu_taotao.service.TBlacklistService;
 import com.bit.scmu_taotao.mapper.TBlacklistMapper;
+import com.bit.scmu_taotao.service.TUserService;
 import com.bit.scmu_taotao.util.UserContext;
 import com.bit.scmu_taotao.util.common.Result;
 import lombok.extern.slf4j.Slf4j;
@@ -29,9 +30,11 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class TBlacklistServiceImpl extends ServiceImpl<TBlacklistMapper, TBlacklist>
-        implements TBlacklistService{
+        implements TBlacklistService {
     @Autowired
     private TUserMapper userMapper;
+    @Autowired
+    private TUserService tUserService;
 
     @Override
     public Result getBlacklistPage(Integer page, Integer size) {
@@ -117,7 +120,7 @@ public class TBlacklistServiceImpl extends ServiceImpl<TBlacklistMapper, TBlackl
 
             if (updated) {
                 log.info("解除黑名单成功：currentUserId={}, blackUserId={}", currentUserId, userId);
-                return Result.ok("解除黑名单成功",null);
+                return Result.ok("解除黑名单成功", null);
             } else {
                 log.warn("解除黑名单失败（更新返回false）：currentUserId={}, blackUserId={}", currentUserId, userId);
                 return Result.fail("解除黑名单失败，请稍后重试");
@@ -128,6 +131,67 @@ public class TBlacklistServiceImpl extends ServiceImpl<TBlacklistMapper, TBlackl
             return Result.fail("解除黑名单失败，请稍后重试");
         }
     }
+
+    @Override
+    public Result addBlacklist(String userId) {
+        try {
+            String currentUserId = UserContext.getUserId();
+            if (currentUserId == null || currentUserId.trim().isEmpty()) {
+                return Result.fail(401, "用户未登录或登录已过期");
+            }
+
+            if (userId == null || userId.trim().isEmpty()) {
+                return Result.fail(400, "被拉黑用户ID不能为空");
+            }
+
+            // 禁止拉黑自己
+            if (currentUserId.equals(userId)) {
+                return Result.fail(400, "不能将自己加入黑名单");
+            }
+            // 校验userId是否存在且有效
+            TUser targetUser = tUserService.getById(userId);
+            if (targetUser == null || Integer.valueOf(1).equals(targetUser.getIsDelete())) {
+                return Result.fail(400, "用户不存在或已被删除");
+            }
+            log.info("加入黑名单：currentUserId={}, blackUserId={}", currentUserId, userId);
+
+            // 查询是否已有记录（包含已解除）
+            LambdaQueryWrapper<TBlacklist> qw = new LambdaQueryWrapper<>();
+            qw.eq(TBlacklist::getUserId, currentUserId)
+                    .eq(TBlacklist::getBlackUserId, userId)
+                    .last("LIMIT 1");
+
+            TBlacklist existed = this.getOne(qw);
+
+            // 已在黑名单中：幂等返回成功
+            if (existed != null && Integer.valueOf(0).equals(existed.getIsDelete())) {
+                return Result.ok("加入黑名单成功", null);
+            }
+
+            // 曾经解除过：恢复
+            if (existed != null) {
+                existed.setIsDelete(0);
+                boolean updated = this.updateById(existed);
+                return updated ? Result.ok("加入黑名单成功", null)
+                        : Result.fail("加入黑名单失败，请稍后重试");
+            }
+
+            // 新增记录
+            TBlacklist blacklist = new TBlacklist();
+            blacklist.setUserId(currentUserId);
+            blacklist.setBlackUserId(userId);
+            blacklist.setIsDelete(0);
+
+            boolean saved = this.save(blacklist);
+            return saved ? Result.ok("加入黑名单成功", null)
+                    : Result.fail("加入黑名单失败，请稍后重试");
+
+        } catch (Exception e) {
+            log.error("加入黑名单失败：{}", e.getMessage(), e);
+            return Result.fail("加入黑名单失败，请稍后重试");
+        }
+    }
+
 }
 
 
