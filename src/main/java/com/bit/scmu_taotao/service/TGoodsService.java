@@ -2,6 +2,7 @@ package com.bit.scmu_taotao.service;
 
 import com.bit.scmu_taotao.entity.TGoods;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.bit.scmu_taotao.util.common.Result;
 
 import java.util.List;
 
@@ -24,4 +25,10 @@ public interface TGoodsService extends IService<TGoods> {
      * @return 商品详情
      */
     TGoods getGoodsById(int goodsId);
+
+    /**
+     * 首页Tab商品列表
+     * tab优先，category为兼容参数
+     */
+    Result getHomeGoodsList(String tab, String category, Integer page, Integer size, String currentUserId);
 }

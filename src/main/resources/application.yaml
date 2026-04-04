@@ -1,6 +1,13 @@
 server:
   port: 8080
 spring:
+  main:
+    allow-circular-references: true
+    task:
+      scheduling:
+        pool:
+          size: 2                    # 定时任务线程池大小
+        thread-name-prefix: taotao-task-
   mvc:
     servlet:
       path: /api/v1/campus-taotao
@@ -43,7 +50,7 @@ logging:
     com.bit.scmu_taotao: debug
 storage:
   s3:
-#    endpoint: http://localhost:9000
+    #    endpoint: http://localhost:9000
     endpoint: http://aijiu.f1.luyouxia.net:15927
     region: us-east-1
     bucket: taotao
@@ -51,4 +58,20 @@ storage:
     secret-key: taotao123456
     path-style-access: true
     max-file-size: 5MB
-    allowed-types: [jpg, jpeg, png, webp]
+    allowed-types: [ jpg, jpeg, png, webp ]
+  # 推荐系统配置
+  recommendation:
+    # 推荐权重配置（总分100）
+    category-weight: 30.0          # 分类偏好权重
+    favorite-weight: 20.0          # 收藏权重（每个收藏+20分）
+    view-count-weight: 25.0        # 点击量权重（总额度25分）
+    recent-publish-bonus: 25.0     # 最近发布加分（30天内，总额度25分）
+
+    # 缓存配置
+    hot-cache-count: 50            # 热门缓存数量
+    hot-cache-expire-hours: 1      # 热门缓存过期时间（小时）
+
+    # 数据生命周期配置
+    browse-history-days: 30        # 浏览历史保留天数
+    click-anti-spam-hours: 1       # 点击防刷时间窗口（小时）
+

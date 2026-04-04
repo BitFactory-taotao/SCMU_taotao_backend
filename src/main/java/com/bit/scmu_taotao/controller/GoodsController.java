@@ -38,7 +38,8 @@ public class GoodsController {
 
     @Autowired
     private TFavoriteService tFavoriteService;
-
+    @Autowired
+    private RecommendationService recommendationService;
     @Autowired
     private ChatSessionService chatSessionService;
     @Autowired
@@ -55,6 +56,20 @@ public class GoodsController {
 
     @Autowired
     private S3StorageProperties s3StorageProperties;
+
+    /**
+     * 首页Tab商品列表
+     * 支持tab参数，category作为兼容参数
+     */
+    @GetMapping
+    public Result getHomeGoodsList(
+            @RequestParam(required = false) String tab,
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+        String currentUserId = UserContext.getUserId();
+        return tGoodsService.getHomeGoodsList(tab, category, page, size, currentUserId);
+    }
 
     @PostMapping
     public Result publishGoods(@RequestBody Map<String, Object> request) {
@@ -291,8 +306,26 @@ public class GoodsController {
 
     @GetMapping("/{goodsId}")
     public Result getGoods(@PathVariable("goodsId") @Min(1) int goodsId) {
+        // todo 该接口无返回值
         // 1. 获取商品基本信息
         TGoods goods = tGoodsService.getGoodsById(goodsId);
+
+        // 异步埋点：记录浏览 + 更新点击量（防刷机制内置）
+        String currentUserId = UserContext.getUserId();
+        if (currentUserId != null) {
+            try {
+                new Thread(() -> {
+                    try {
+                        recommendationService.recordBrowseAndUpdateViewCount(currentUserId, (long) goodsId);
+                        log.debug("Browse logging completed: userId={}, goodsId={}", currentUserId, goodsId);
+                    } catch (Exception e) {
+                        log.warn("Failed to record browse for goodsId={}, userId={}", goodsId, currentUserId, e);
+                    }
+                }).start();
+            } catch (Exception e) {
+                log.warn("Failed to spawn browse logging thread", e);
+            }
+        }
 
         // 2. 构建响应DTO
         GoodsResponseDTO data = new GoodsResponseDTO();
