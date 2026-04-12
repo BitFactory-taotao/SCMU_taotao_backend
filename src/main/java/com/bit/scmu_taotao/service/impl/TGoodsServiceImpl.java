@@ -17,6 +17,7 @@ import com.bit.scmu_taotao.service.TGoodsService;
 import com.bit.scmu_taotao.mapper.TGoodsMapper;
 import com.bit.scmu_taotao.service.TUserService;
 import com.bit.scmu_taotao.util.common.Result;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -29,13 +30,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
-* @author 35314
-* @description 针对表【t_goods(商品信息表)】的数据库操作Service实现
-* @createDate 2026-03-14 18:49:38
-*/
+ * @author 35314
+ * @description 针对表【t_goods(商品信息表)】的数据库操作Service实现
+ * @createDate 2026-03-14 18:49:38
+ */
+@Slf4j
 @Service
 public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
-    implements TGoodsService{
+        implements TGoodsService {
     @Autowired
     private TGoodsImageMapper tGoodsImageMapper;
 
@@ -91,6 +93,61 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
         }
 
         return buildNormalTabResult(effectiveTab, safePage, safeSize);
+    }
+
+    @Override
+    public Result searchHomeGoods(String keyword, Integer page, Integer size) {
+        try {
+            String trimmedKeyword = keyword == null ? "" : keyword.trim();
+            if (trimmedKeyword.isEmpty()) {
+                return Result.fail(400, "keyword不能为空");
+            }
+
+            int safePage = page == null || page < 1 ? 1 : page;
+            int safeSize = size == null || size < 1 ? 10 : Math.min(size, 50);
+
+            LambdaQueryWrapper<TGoods> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(TGoods::getIsDelete, 0)
+                    .eq(TGoods::getGoodsStatus, 0)
+                    // 这里只搜索普通商品，不包含预售商品
+                    .eq(TGoods::getGoodsType, 1)
+                    .and(w -> w.like(TGoods::getGoodsName, trimmedKeyword)
+                            .or()
+                            .like(TGoods::getGoodsDesc, trimmedKeyword)
+                            .or()
+                            .like(TGoods::getGoodsNote, trimmedKeyword)
+                            .or()
+                            .like((TGoods::getUseScene), trimmedKeyword))
+                    .orderByDesc(TGoods::getCreateTime);
+
+            Page<TGoods> goodsPage = this.page(new Page<>(safePage, safeSize), queryWrapper);
+
+            List<Map<String, Object>> list = goodsPage.getRecords().stream().map(goods -> {
+                Map<String, Object> row = new HashMap<>();
+                row.put("id", goods.getGoodsId());
+                row.put("name", goods.getGoodsName());
+                row.put("remark", goods.getGoodsNote() == null ? "" : goods.getGoodsNote());
+                row.put("price", goods.getPrice());
+                row.put("imgUrl", getMainImage(goods.getGoodsId()));
+                row.put("publishTime", goods.getCreateTime() == null ? "" : goods.getCreateTime().format(DATE_TIME_FORMATTER));
+
+                TUser publisher = tUserService.getById(goods.getUserId());
+                row.put("publisherName", publisher == null ? "未知" : publisher.getUserName());
+                row.put("publisherId", goods.getUserId());
+                return row;
+            }).collect(Collectors.toList());
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("total", goodsPage.getTotal());
+            data.put("pages", goodsPage.getPages());
+            data.put("list", list);
+
+            log.info("首页搜索完成：keyword={}, page={}, size={}, total={}", trimmedKeyword, safePage, safeSize, goodsPage.getTotal());
+            return Result.ok("请求成功", data);
+        } catch (Exception e) {
+            log.error("首页搜索失败：keyword={}, page={}, size={}", keyword, page, size, e);
+            return Result.fail(500, "首页搜索失败，请稍后重试");
+        }
     }
 
     private String normalizeTab(String tab, String category) {

@@ -7,15 +7,18 @@ import com.bit.scmu_taotao.config.storage.S3StorageProperties;
 import com.bit.scmu_taotao.dto.goods.GoodsRequestDTO;
 import com.bit.scmu_taotao.dto.goods.GoodsResponseDTO;
 import com.bit.scmu_taotao.dto.goods.PublisherDTO;
+import com.bit.scmu_taotao.dto.goods.SearchRequestDTO;
 import com.bit.scmu_taotao.entity.*;
 import com.bit.scmu_taotao.service.*;
 import com.bit.scmu_taotao.service.storage.ObjectStorageService;
 import com.bit.scmu_taotao.util.UserContext;
 import com.bit.scmu_taotao.util.common.Result;
 import com.bit.scmu_taotao.util.storage.ObjectKeyParser;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -69,6 +72,22 @@ public class GoodsController {
             @RequestParam(defaultValue = "10") Integer size) {
         String currentUserId = UserContext.getUserId();
         return tGoodsService.getHomeGoodsList(tab, category, page, size, currentUserId);
+    }
+
+    /**
+     * 首页模糊搜索（匹配商品名称、描述、备注）
+     */
+    @GetMapping("/search")
+    public Result searchHomeGoods(@Valid SearchRequestDTO query, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            String msg = bindingResult.getFieldError() != null
+                    ? bindingResult.getFieldError().getDefaultMessage()
+                    : "参数错误";
+            return Result.fail(400, msg);
+        }
+
+        log.info("首页搜索请求：keyword={}, page={}, size={}", query.getKeyword(), query.getPage(), query.getSize());
+        return tGoodsService.searchHomeGoods(query.getKeyword(), query.getPage(), query.getSize());
     }
 
     @PostMapping
