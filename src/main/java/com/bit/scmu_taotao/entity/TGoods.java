@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Date;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
@@ -69,7 +68,7 @@ public class TGoods {
     private String exchangePlace;
 
     /**
-     * 状态（0=在售(online), 1=成交(sold), 2=下架(offline), 3=审核(audit)）
+     * 状态（0=在售(online), 1=成交(sold), 2=下架(offline),  3=审核(audit)）(deprecated)
      */
     private Integer goodsStatus;
 

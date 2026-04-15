@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.regex.Pattern;
 
 /**
  * 登录拦截器
@@ -28,27 +29,67 @@ public class LoginInterceptor implements HandlerInterceptor {
     // ObjectMapper 作为工具类直接实例化，无需依赖 Spring 容器
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    // 公共 GET 路由：/goods, /goods/search, /goods/{goodsId}, /user/{userId}/home
+    private static final Pattern GOODS_DETAIL_PATTERN = Pattern.compile("^/goods/\\d+$");
+    private static final Pattern USER_HOME_PATTERN = Pattern.compile("^/user/[^/]+/home$");
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        String method = request.getMethod();
+        // 用 servletPath 避免 context-path 干扰匹配
+        String path = request.getServletPath();
         // 1. 获取 Token
         String token = request.getHeader("Authorization");
-        log.info("收到请求：{}，Token：{}", request.getRequestURI(), token);
+        log.info("收到请求：{} {}，Token：{}", method,path, token);
 
-        // 2. 校验 Token
-        if (token != null && !token.isEmpty()) {
-            // 去除 "Bearer " 前缀
-            String cleanToken = token.startsWith("Bearer ") ? token.substring(7) : token;
-            String userId = tokenUtil.validateToken(cleanToken);
-
-            if (userId != null) {
-                // Token 有效，存入 ThreadLocal
-                UserContext.setUserId(userId);
-                return true;
-            }
+        // 放行预检请求，避免 CORS 失败
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            return true;
         }
 
-        // 3. Token 无效，返回 401
-        log.warn("Token 无效或缺失，拦截请求：{}", request.getRequestURI());
+        // 公共 GET：可匿名；若带 token 且有效则注入 UserContext
+        if (isPublicGet(method, path)) {
+            trySetUserContextFromToken(token);
+            return true;
+        }
+
+        // 其他请求：必须登录
+        if (trySetUserContextFromToken(token)) {
+            return true;
+        }
+
+        log.warn("Token 无效或缺失，拦截请求：{} {}", method, path);
+        writeUnauthorized(response);
+        return false;
+    }
+
+    private boolean isPublicGet(String method, String path) {
+        if (!"GET".equalsIgnoreCase(method)) {
+            return false;
+        }
+        return "/goods".equals(path)
+                || "/goods/search".equals(path)
+                || GOODS_DETAIL_PATTERN.matcher(path).matches()
+                || USER_HOME_PATTERN.matcher(path).matches();
+    }
+    private boolean trySetUserContextFromToken(String token) {
+        if (!hasText(token)) {
+            return false;
+        }
+        String cleanToken = token.startsWith("Bearer ") ? token.substring(7) : token;
+        String userId = tokenUtil.validateToken(cleanToken);
+        if (userId != null) {
+            UserContext.setUserId(userId);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean hasText(String s) {
+        return s != null && !s.trim().isEmpty();
+    }
+
+    private void writeUnauthorized(HttpServletResponse response) throws Exception {
         response.setStatus(401);
         response.setContentType("application/json;charset=UTF-8");
         Result result = Result.fail(401, "未登录或登录已过期");
@@ -56,7 +97,6 @@ public class LoginInterceptor implements HandlerInterceptor {
             writer.write(objectMapper.writeValueAsString(result));
             writer.flush();
         }
-        return false;
     }
 
     @Override

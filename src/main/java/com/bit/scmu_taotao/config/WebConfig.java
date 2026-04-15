@@ -23,8 +23,8 @@ public class WebConfig implements WebMvcConfigurer {
                 .addPathPatterns("/**") // 拦截所有路径
                 .excludePathPatterns(
                         "/login",           // 登录接口放行
-                        "/goods",           // 推荐接口放行
-                        "/goods/search",
+//                        "/goods",           // 推荐接口放行
+//                        "/goods/search",
                         "/error",           // 错误页面放行
                         "/static/**",       // 静态资源放行
                         "/favicon.ico"      // 图标放行

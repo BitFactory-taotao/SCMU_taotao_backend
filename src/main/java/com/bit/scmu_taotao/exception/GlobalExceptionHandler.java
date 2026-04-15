@@ -25,4 +25,9 @@ public class GlobalExceptionHandler {
         log.error(e.getMessage(), e);
         return Result.fail(500, "系统异常，请稍后重试");
     }
+    @ExceptionHandler(SensitiveWordException.class)
+    public Result handleSensitiveWordException(SensitiveWordException e) {
+        return Result.fail(400, e.getMessage());
+    }
+
 }

@@ -60,6 +60,8 @@ public class GoodsController {
     @Autowired
     private S3StorageProperties s3StorageProperties;
 
+    @Autowired
+    private SensitiveWordService sensitiveWordService;
     /**
      * 首页Tab商品列表
      * 支持tab参数，category作为兼容参数
@@ -117,7 +119,8 @@ public class GoodsController {
         if (goodsCategory == null) {
             return Result.fail("商品分类不存在");
         }
-
+        log.info("开始检测商品信息敏感词");
+        sensitiveWordService.validateGoods(name, desc, remark, purpose, exchangeAddr);
         // 4. 创建商品实体
         TGoods goods = new TGoods();
         goods.setUserId(userId);
@@ -157,10 +160,11 @@ public class GoodsController {
 
         // 8. 构建响应数据
         java.util.Map<String, Object> data = new java.util.HashMap<>();
-        data.put("goodsId", goods.getGoodsId());
+//        data.put("goodsId", goods.getGoodsId());
+        data.put("imgUrls",imgUrls);
 
         // 9. 返回成功响应
-        return Result.ok("发布成功", data);
+        return Result.ok("发布成功，平台将进行合规审核", data);
     }
 
 

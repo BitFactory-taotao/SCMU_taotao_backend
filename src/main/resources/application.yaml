@@ -3,7 +3,7 @@ server:
 spring:
   main:
     allow-circular-references: true
-    task:
+  task:
       scheduling:
         pool:
           size: 2                    # 定时任务线程池大小
@@ -59,7 +59,7 @@ storage:
     path-style-access: true
     max-file-size: 5MB
     allowed-types: [ jpg, jpeg, png, webp ]
-  # 推荐系统配置
+  # 推荐系统配置(没用上）
   recommendation:
     # 推荐权重配置（总分100）
     category-weight: 30.0          # 分类偏好权重
@@ -74,4 +74,9 @@ storage:
     # 数据生命周期配置
     browse-history-days: 30        # 浏览历史保留天数
     click-anti-spam-hours: 1       # 点击防刷时间窗口（小时）
+
+goods:
+  # 敏感词库（用逗号分隔）
+  sensitive-words: "高仿,A货,套现,刷单,假证,代考,作弊,毒品,枪支,烟草,电子烟,色情,催情,迷药,走私,假药,医疗器械,堕胎药,流产药"
+
 
