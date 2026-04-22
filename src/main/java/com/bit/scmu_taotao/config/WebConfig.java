@@ -23,11 +23,11 @@ public class WebConfig implements WebMvcConfigurer {
                 .addPathPatterns("/**") // 拦截所有路径
                 .excludePathPatterns(
                         "/login",           // 登录接口放行
-//                        "/goods",           // 推荐接口放行
-//                        "/goods/search",
                         "/error",           // 错误页面放行
                         "/static/**",       // 静态资源放行
-                        "/favicon.ico"      // 图标放行
+                        "/favicon.ico",     // 图标放行
+                        "/ws/**",           // WebSocket 握手路径放行，由握手拦截器鉴权
+                        "/test-only/auth/**" // test profile 下用于联调的临时发 token 接口
                 );
     }
 }

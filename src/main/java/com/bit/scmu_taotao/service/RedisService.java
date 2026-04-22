@@ -53,4 +53,12 @@ public class RedisService {
     public void setExpire(String key, long timeout, TimeUnit unit) {
         redisTemplate.expire(key, timeout, unit);
     }
+
+    public Long getExpire(String key, TimeUnit unit) {
+        return redisTemplate.getExpire(key, unit);
+    }
+
+    public Set<String> keys(String pattern) {
+        return redisTemplate.keys(pattern);
+    }
 }

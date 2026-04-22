@@ -1,6 +1,7 @@
 package com.bit.scmu_taotao.service;
 
 import com.bit.scmu_taotao.entity.ChatSession;
+import com.bit.scmu_taotao.util.common.Result;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 /**
@@ -16,4 +17,16 @@ public interface ChatSessionService extends IService<ChatSession> {
      * @return 聊天会话
      */
     ChatSession findSessionByUsers(String userId1, String userId2);
+
+    Result listMySessions(String userId, Integer page, Integer size);
+
+    Result initiateTrade(Long goodsId, String userId);
+
+    Result contactSeller(Long goodsId, String userId);
+
+    Result withdrawTradeRequest(Long goodsId, String buyerId);
+
+    Result rejectTradeRequest(Long goodsId, String buyerId, String sellerId);
+
+    Result confirmTrade(Long goodsId, String buyerId, String sellerId);
 }

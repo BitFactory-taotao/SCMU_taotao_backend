@@ -33,6 +33,7 @@ public class TFeedback {
 
     /**
      * 状态（0-待, 1-中, 2-复, 3-闭）
+     * 0-pending, 1-processed
      */
     private Integer feedbackStatus;
 

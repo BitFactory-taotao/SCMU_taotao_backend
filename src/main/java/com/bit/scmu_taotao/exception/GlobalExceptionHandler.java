@@ -2,6 +2,8 @@ package com.bit.scmu_taotao.exception;
 
 import com.bit.scmu_taotao.util.common.Result;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
+import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -30,4 +32,10 @@ public class GlobalExceptionHandler {
         return Result.fail(400, e.getMessage());
     }
 
+    @MessageExceptionHandler(Exception.class)
+    @SendToUser("/queue/errors")
+    public Result handleStompException(Exception e) {
+        log.error("STOMP message processing failed", e);
+        return Result.fail(500, "message processing failed");
+    }
 }

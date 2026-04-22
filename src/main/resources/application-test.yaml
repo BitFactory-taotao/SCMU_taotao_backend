@@ -1,0 +1,10 @@
+spring:
+  config:
+    activate:
+      on-profile: test
+
+test-only:
+  auth:
+    enabled: true
+    secret: bitscmutaotao
+

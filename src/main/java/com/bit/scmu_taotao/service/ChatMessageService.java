@@ -1,6 +1,7 @@
 package com.bit.scmu_taotao.service;
 
 import com.bit.scmu_taotao.entity.ChatMessage;
+import com.bit.scmu_taotao.util.common.Result;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 /**
@@ -9,5 +10,16 @@ import com.baomidou.mybatisplus.extension.service.IService;
 * @createDate 2026-03-14 18:49:37
 */
 public interface ChatMessageService extends IService<ChatMessage> {
+
+	Result listByChatId(Long chatId, String userId, Integer page, Integer size);
+
+	Result sendByChatId(Long chatId, String senderId, String content);
+
+	Result sendByStomp(Long chatId, String senderId, String receiverId, String content);
+
+	Result clearUnreadByUserId(String userId);
+
+	Result markChatRead(Long chatId, String userId);
+
 
 }
