@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -197,6 +198,8 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
                 this.updateById(session);
             }
 
+            appendTradeEventMessage(session.getChatId(), userId, sellerId, "买家已发起交易申请");
+
             // 5) 结果反馈
             Map<String, Object> data = new HashMap<>();
             data.put("expireTime", expireTime.format(TIME_FORMATTER));
@@ -260,13 +263,23 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Result withdrawTradeRequest(Long goodsId, String buyerId) {
         try {
             String tradeIntentKey = buildTradeIntentKey(goodsId, buyerId);
             if (!Boolean.TRUE.equals(redisService.isExist(tradeIntentKey))) {
                 return Result.fail(400, "交易请求不存在或已失效");
             }
+            TGoods goods = tGoodsService.getById(goodsId);
+            if (goods == null || Integer.valueOf(1).equals(goods.getIsDelete())) {
+                return Result.fail(404, "商品不存在");
+            }
+            String sellerId = goods.getUserId();
             redisService.delete(tradeIntentKey);
+            ChatSession session = findSessionByUsers(buyerId, sellerId);
+            if (session != null) {
+                appendTradeEventMessage(session.getChatId(), buyerId, sellerId, "买家已撤回交易申请");
+            }
             log.info("买家撤回交易请求成功: goodsId={}, buyerId={}", goodsId, buyerId);
             return Result.ok("您已成功撤回交易请求", null);
         } catch (Exception e) {
@@ -276,6 +289,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Result rejectTradeRequest(Long goodsId, String buyerId, String sellerId) {
         try {
             TGoods goods = tGoodsService.getById(goodsId);
@@ -299,6 +313,10 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
             }
 
             redisService.delete(tradeIntentKey);
+            ChatSession session = findSessionByUsers(buyerId, sellerId);
+            if (session != null) {
+                appendTradeEventMessage(session.getChatId(), sellerId, buyerId, "卖家已拒绝交易申请");
+            }
             log.info("卖家拒绝交易请求成功: goodsId={}, buyerId={}, sellerId={}, intentKey={}", goodsId, buyerId, sellerId, tradeIntentKey);
             return Result.ok("已拒绝该交易请求", null);
         } catch (Exception e) {
@@ -358,6 +376,11 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
             }
 
             redisService.delete(tradeIntentKey);
+
+            ChatSession session = findSessionByUsers(buyerId, sellerId);
+            if (session != null) {
+                appendTradeEventMessage(session.getChatId(), sellerId, buyerId, "交易已确认，商品已成交");
+            }
 
             Map<String, Object> data = new HashMap<>();
             data.put("tradeId", trade.getTradeId());
@@ -423,5 +446,28 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
             return null;
         }
         return String.valueOf(value);
+    }
+
+    private void appendTradeEventMessage(Long chatId, String senderId, String receiverId, String content) {
+        if (chatId == null || !StringUtils.hasText(senderId) || !StringUtils.hasText(receiverId) || !StringUtils.hasText(content)) {
+            return;
+        }
+
+        ChatMessage chatMessage = new ChatMessage();
+        chatMessage.setChatId(chatId);
+        chatMessage.setSendId(senderId);
+        chatMessage.setReceiveId(receiverId);
+        chatMessage.setMsgType(1);
+        chatMessage.setContentType("TRADE_EVENT");
+        chatMessage.setMsgContent(content);
+        chatMessage.setIsRead(0);
+        chatMessage.setIsDelete(0);
+        chatMessageMapper.insert(chatMessage);
+
+        ChatSession updateChatSession = new ChatSession();
+        updateChatSession.setChatId(chatId);
+        updateChatSession.setLastMsg(content);
+        updateChatSession.setLastTime(new Date());
+        this.updateById(updateChatSession);
     }
 }
