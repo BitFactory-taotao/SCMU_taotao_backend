@@ -52,6 +52,31 @@ public class ChatMessage {
     private String msgContent;
 
     /**
+     * 消息内容类型（TEXT/IMAGE/AUDIO）
+     */
+    private String contentType;
+
+    /**
+     * 媒体资源地址
+     */
+    private String mediaUrl;
+
+    /**
+     * 媒体文件名
+     */
+    private String mediaName;
+
+    /**
+     * 媒体文件大小（字节）
+     */
+    private Long mediaSize;
+
+    /**
+     * 媒体时长（秒，语音消息使用）
+     */
+    private Integer mediaDuration;
+
+    /**
      * 已读状态
      */
     private Integer isRead;

@@ -1,5 +1,6 @@
 package com.bit.scmu_taotao.controller;
 
+import com.bit.scmu_taotao.dto.chat.MessageSendMediaRequest;
 import com.bit.scmu_taotao.dto.chat.MessageSendRequest;
 import com.bit.scmu_taotao.service.ChatMessageService;
 import com.bit.scmu_taotao.service.ChatSessionService;
@@ -53,6 +54,16 @@ public class MessagesRestController {
             return Result.fail(401, "用户未登录");
         }
         return chatMessageService.sendByChatId(chatId, userId, request.getContent());
+    }
+
+    @PostMapping("/{chatId}/media")
+    public Result sendMediaMessage(@PathVariable("chatId") @Min(1) Long chatId,
+                                   @Valid @RequestBody MessageSendMediaRequest request) {
+        String userId = UserContext.getUserId();
+        if (userId == null) {
+            return Result.fail(401, "用户未登录");
+        }
+        return chatMessageService.sendMediaByChatId(chatId, userId, request);
     }
 
     @PostMapping("/{goodsId}/trade")

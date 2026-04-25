@@ -12,6 +12,11 @@ public class StompChatMessageDTO {
     private String senderId;
     private String receiverId;
     private String content;
+    private String contentType;
+    private String mediaUrl;
+    private String mediaName;
+    private Long mediaSize;
+    private Integer mediaDuration;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime sendTime;
     private Boolean read;

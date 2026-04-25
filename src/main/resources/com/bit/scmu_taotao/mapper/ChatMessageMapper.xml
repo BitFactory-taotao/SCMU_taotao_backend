@@ -12,6 +12,11 @@
             <result property="tradeId" column="trade_id" />
             <result property="msgType" column="msg_type" />
             <result property="msgContent" column="msg_content" />
+            <result property="contentType" column="content_type" />
+            <result property="mediaUrl" column="media_url" />
+            <result property="mediaName" column="media_name" />
+            <result property="mediaSize" column="media_size" />
+            <result property="mediaDuration" column="media_duration" />
             <result property="isRead" column="is_read" />
             <result property="createTime" column="create_time" />
             <result property="isDelete" column="is_delete" />
@@ -19,6 +24,7 @@
 
     <sql id="Base_Column_List">
         msg_id,chat_id,send_id,receive_id,trade_id,msg_type,
-        msg_content,is_read,create_time,is_delete
+        msg_content,content_type,media_url,media_name,media_size,media_duration,
+        is_read,create_time,is_delete
     </sql>
 </mapper>

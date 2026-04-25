@@ -1,5 +1,7 @@
 package com.bit.scmu_taotao.controller;
 
+import com.bit.scmu_taotao.dto.chat.MessageSendMediaRequest;
+import com.bit.scmu_taotao.dto.chat.StompChatSendMediaRequest;
 import com.bit.scmu_taotao.dto.chat.StompChatSendRequest;
 import com.bit.scmu_taotao.service.ChatMessageService;
 import com.bit.scmu_taotao.util.common.Result;
@@ -32,6 +34,27 @@ public class MessagesController {
         Result result = chatMessageService.sendByStomp(request.getChatId(), senderId, request.getReceiverId(), request.getContent());
         if (result == null || result.getCode() == null || result.getCode() != 200) {
             throw new RuntimeException(result == null ? "failed to send chat message" : result.getMsg());
+        }
+    }
+
+    @MessageMapping("/messages/send/media")
+    public void sendMediaMessage(@Valid @Payload StompChatSendMediaRequest request, Principal principal) {
+        if (principal == null || !StringUtils.hasText(principal.getName())) {
+            throw new IllegalArgumentException("unauthorized websocket user");
+        }
+
+        MessageSendMediaRequest mediaRequest = new MessageSendMediaRequest();
+        mediaRequest.setContentType(request.getContentType());
+        mediaRequest.setContent(request.getContent());
+        mediaRequest.setMediaUrl(request.getMediaUrl());
+        mediaRequest.setMediaName(request.getMediaName());
+        mediaRequest.setMediaSize(request.getMediaSize());
+        mediaRequest.setMediaDuration(request.getMediaDuration());
+
+        String senderId = principal.getName();
+        Result result = chatMessageService.sendMediaByStomp(request.getChatId(), senderId, request.getReceiverId(), mediaRequest);
+        if (result == null || result.getCode() == null || result.getCode() != 200) {
+            throw new RuntimeException(result == null ? "failed to send media chat message" : result.getMsg());
         }
     }
 }
