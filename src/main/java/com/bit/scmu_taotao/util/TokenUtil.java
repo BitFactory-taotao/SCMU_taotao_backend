@@ -14,19 +14,19 @@ import java.util.concurrent.TimeUnit;
  */
 @Component
 public class TokenUtil {
-    
+
     @Autowired
     private RedisService redisService;
-    
+
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
-    
+
     // Token 过期时间：2 小时
     private static final long TOKEN_EXPIRE_HOURS = 2;
-    
+
     // Token 前缀
     private static final String TOKEN_PREFIX = "token_";
-    
+
     /**
      * 生成 Token
      * @param userId 用户 ID
@@ -35,14 +35,33 @@ public class TokenUtil {
     public String generateToken(String userId) {
         // 生成随机 Token
         String token = TOKEN_PREFIX + System.currentTimeMillis() + RandomUtil.randomNumbers(6);
-        
+
         // 将 Token 存储到 Redis，同时建立 userId 和 token 的映射关系
         redisService.setWithExpire(token, userId, TOKEN_EXPIRE_HOURS, TimeUnit.HOURS);
         redisService.setWithExpire(TOKEN_PREFIX + userId, token, TOKEN_EXPIRE_HOURS, TimeUnit.HOURS);
-        
+
         return token;
     }
-    
+
+    /**
+     * 管理员登录生成token
+     * @param adminId 管理员 ID
+     * @return Token 字符串
+     */
+    public String generateAdminToken(String adminId) {
+        String token = "ADMIN_" + System.currentTimeMillis() + RandomUtil.randomNumbers(6);
+
+        // 存入 Redis 的值加上 "ADMIN:" 前缀
+        String storedValue = "ADMIN:" + adminId;
+
+        redisService.setWithExpire(token, storedValue, TOKEN_EXPIRE_HOURS, TimeUnit.HOURS);
+
+        // 管理员的反向映射 Key 也加个前缀，防止跟学生 ID 冲突
+        redisService.setWithExpire("ADMIN_TOKEN_KEY:" + adminId, token, TOKEN_EXPIRE_HOURS, TimeUnit.HOURS);
+
+        return token;
+    }
+
     /**
      * 验证 Token 是否有效
      * @param token Token 字符串
@@ -52,17 +71,17 @@ public class TokenUtil {
         if (token == null || token.isEmpty()) {
             return null;
         }
-        
+
         Object userId = redisService.get(token);
         if (userId != null) {
             // 刷新过期时间
             redisService.setWithExpire(token, userId, TOKEN_EXPIRE_HOURS, TimeUnit.HOURS);
             return userId.toString();
         }
-        
+
         return null;
     }
-    
+
     /**
      * 使 Token 失效（登出时使用）
      * @param token Token 字符串
@@ -80,7 +99,7 @@ public class TokenUtil {
             }
         }
     }
-    
+
     /**
      * 获取用户当前有效的 Token
      * @param userId 用户 ID

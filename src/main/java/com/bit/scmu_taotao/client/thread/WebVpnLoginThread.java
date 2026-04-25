@@ -189,7 +189,7 @@ public class WebVpnLoginThread extends Thread {
                 throw new LoginException(LoginProcessMessage.LOGIN_FAILURE);
             }
             log.info("登录成功，开始获取用户名");
-            // TODO 爬取用户名
+            // 爬取用户名
             String username = getRealUserName(httpClient);
             log.info("获取用户名成功，用户名为:{}", username);
             return Result.ok(username);

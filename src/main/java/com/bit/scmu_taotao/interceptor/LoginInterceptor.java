@@ -49,12 +49,12 @@ public class LoginInterceptor implements HandlerInterceptor {
 
         // 公共 GET：可匿名；若带 token 且有效则注入 UserContext
         if (isPublicGet(method, path)) {
-            trySetUserContextFromToken(token);
+            trySetUserContextFromToken(token,path);
             return true;
         }
 
         // 其他请求：必须登录
-        if (trySetUserContextFromToken(token)) {
+        if (trySetUserContextFromToken(token,path)) {
             return true;
         }
 
@@ -67,22 +67,39 @@ public class LoginInterceptor implements HandlerInterceptor {
         if (!"GET".equalsIgnoreCase(method)) {
             return false;
         }
+        if (path.contains("/ws")) {
+            return true;
+        }
         return "/goods".equals(path)
                 || "/goods/search".equals(path)
                 || GOODS_DETAIL_PATTERN.matcher(path).matches()
                 || USER_HOME_PATTERN.matcher(path).matches();
     }
-    private boolean trySetUserContextFromToken(String token) {
+    private boolean trySetUserContextFromToken(String token, String path) {
         if (!hasText(token)) {
             return false;
         }
         String cleanToken = token.startsWith("Bearer ") ? token.substring(7) : token;
-        String userId = tokenUtil.validateToken(cleanToken);
-        if (userId != null) {
-            UserContext.setUserId(userId);
-            return true;
+        // 这里从 Redis 拿到的是 generateAdminToken 存入的 "ADMIN:admin01" 或者原有的 "2023001"
+        String rawValue = tokenUtil.validateToken(cleanToken);
+
+        if (rawValue == null) {
+            return false;
         }
-        return false;
+        rawValue = rawValue.replace("\"", "");
+        boolean isAdminPath = path.contains("/admin"); // 判断是否是管理端接口
+        boolean isAdminToken = rawValue.startsWith("ADMIN:"); // 判断是否是管理员 Token
+        // 逻辑 A：访问管理端接口，但不是管理员 Token -> 拒绝
+        if (isAdminPath && !isAdminToken) {
+            log.warn("学生 Token 企图访问管理端接口: {}", path);
+            return false;
+        }
+        // 逻辑 B：管理员 Token 访问学生端接口 -> 允许（方便测试），但要去掉前缀
+        // 逻辑 C：正常的学生 Token 访问学生接口 -> 允许
+        String finalId = isAdminToken ? rawValue.replace("ADMIN:", "") : rawValue;
+        // 统一注入上下文，业务代码拿到的 ID 永远是不带前缀的纯 ID
+        UserContext.setUserId(finalId);
+        return true;
     }
 
     private boolean hasText(String s) {
