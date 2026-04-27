@@ -1,9 +1,11 @@
 package com.bit.scmu_taotao.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.bit.scmu_taotao.entity.TBlacklist;
 import com.bit.scmu_taotao.entity.TGoods;
 import com.bit.scmu_taotao.entity.TGoodsCategory;
 import com.bit.scmu_taotao.entity.TUser;
+import com.bit.scmu_taotao.service.TBlacklistService;
 import com.bit.scmu_taotao.service.TGoodsCategoryService;
 import com.bit.scmu_taotao.service.TGoodsService;
 import com.bit.scmu_taotao.service.TUserService;
@@ -55,6 +57,9 @@ class HomeModuleIntegrationTest {
     private TUserService tUserService;
 
     @Autowired
+    private TBlacklistService tBlacklistService;
+
+    @Autowired
     private TokenUtil tokenUtil;
 
     @Autowired
@@ -64,6 +69,10 @@ class HomeModuleIntegrationTest {
     private String testUserId;
     private String authToken;
     private Long categoryGoodsId;
+    private Long preOrderGoodsId;
+    private String blockedUserId;
+    private Long blockedGoodsId;
+    private Long blockedPreOrderGoodsId;
 
     @BeforeEach
     void setUp() {
@@ -78,14 +87,42 @@ class HomeModuleIntegrationTest {
                 "描述_" + uniqueToken, "备注_" + uniqueToken, 1);
         categoryGoodsId = createGoods(testUserId, dormitoryCategoryId, "首页分类商品_" + uniqueToken,
                 "分类描述", "分类备注", 1);
+        preOrderGoodsId = createGoods(testUserId, dormitoryCategoryId, "首页预售商品_" + uniqueToken,
+                "预售描述", "预售备注", 2);
+
+        blockedUserId = "b" + uniqueToken;
+        ensureUser(blockedUserId, "被拉黑卖家");
+        blockedGoodsId = createGoods(blockedUserId, dormitoryCategoryId, "黑名单商品_" + uniqueToken,
+                "黑名单描述", "黑名单备注", 1);
+        blockedPreOrderGoodsId = createGoods(blockedUserId, dormitoryCategoryId, "黑名单预售商品_" + uniqueToken,
+                "黑名单预售描述", "黑名单预售备注", 2);
+        TGoods blockedGoods = tGoodsService.getById(blockedGoodsId);
+        blockedGoods.setViewCount(99999);
+        tGoodsService.updateById(blockedGoods);
+
+        TBlacklist blacklist = new TBlacklist();
+        blacklist.setUserId(testUserId);
+        blacklist.setBlackUserId(blockedUserId);
+        blacklist.setIsDelete(0);
+        tBlacklistService.save(blacklist);
     }
 
     @AfterEach
     void tearDown() {
         tGoodsService.remove(new LambdaQueryWrapper<TGoods>()
                 .eq(TGoods::getUserId, testUserId));
+        if (blockedUserId != null) {
+            tGoodsService.remove(new LambdaQueryWrapper<TGoods>()
+                    .eq(TGoods::getUserId, blockedUserId));
+        }
+        tBlacklistService.remove(new LambdaQueryWrapper<TBlacklist>()
+                .eq(TBlacklist::getUserId, testUserId));
         tUserService.remove(new LambdaQueryWrapper<TUser>()
                 .eq(TUser::getUserId, testUserId));
+        if (blockedUserId != null) {
+            tUserService.remove(new LambdaQueryWrapper<TUser>()
+                    .eq(TUser::getUserId, blockedUserId));
+        }
     }
 
     @Test
@@ -107,6 +144,7 @@ class HomeModuleIntegrationTest {
         List<Map<String, Object>> list = getList(data);
         assertFalse(list.isEmpty());
         assertTrue(list.stream().anyMatch(item -> asLong(item.get("id")) > 0));
+        assertTrue(list.stream().noneMatch(item -> asLong(item.get("id")) == blockedGoodsId));
     }
 
     @Test
@@ -129,13 +167,16 @@ class HomeModuleIntegrationTest {
         Result result = callApi("/goods", Map.of(
                 "tab", "recommend",
                 "page", "1",
-                "size", "10"
+                "size", "50"
         ));
 
         Map<String, Object> data = assertOkAndGetData(result);
         assertTrue(data.containsKey("total"));
         assertTrue(data.containsKey("pages"));
         assertTrue(data.containsKey("list"));
+
+        List<Map<String, Object>> list = getList(data);
+        assertTrue(list.stream().noneMatch(item -> asLong(item.get("id")) == blockedGoodsId));
     }
 
     @Test
@@ -151,6 +192,39 @@ class HomeModuleIntegrationTest {
         List<Map<String, Object>> list = getList(data);
         assertFalse(list.isEmpty());
         assertTrue(list.stream().anyMatch(item -> asLong(item.get("id")) == categoryGoodsId));
+        assertTrue(list.stream().noneMatch(item -> asLong(item.get("id")) == blockedGoodsId));
+    }
+
+    @Test
+    @DisplayName("首页预售展示: tab=pre-order 包含普通预售且过滤黑名单预售")
+    void testHomePreOrderTab() throws Exception {
+        Result result = callApi("/goods", Map.of(
+                "tab", "pre-order",
+                "page", "1",
+                "size", "50"
+        ));
+
+        Map<String, Object> data = assertOkAndGetData(result);
+        List<Map<String, Object>> list = getList(data);
+        assertFalse(list.isEmpty());
+        assertTrue(list.stream().anyMatch(item -> asLong(item.get("id")) == preOrderGoodsId));
+        assertTrue(list.stream().noneMatch(item -> asLong(item.get("id")) == blockedPreOrderGoodsId));
+    }
+
+    @Test
+    @DisplayName("首页兼容参数: tab为空时按category=dormitory返回分类数据")
+    void testHomeCategoryFallbackParam() throws Exception {
+        Result result = callApi("/goods", Map.of(
+                "category", "dormitory",
+                "page", "1",
+                "size", "50"
+        ));
+
+        Map<String, Object> data = assertOkAndGetData(result);
+        List<Map<String, Object>> list = getList(data);
+        assertFalse(list.isEmpty());
+        assertTrue(list.stream().anyMatch(item -> asLong(item.get("id")) == categoryGoodsId));
+        assertTrue(list.stream().noneMatch(item -> asLong(item.get("id")) == blockedGoodsId));
     }
 
     @Test

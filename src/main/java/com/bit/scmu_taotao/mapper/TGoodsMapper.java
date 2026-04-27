@@ -42,6 +42,7 @@ public interface TGoodsMapper extends BaseMapper<TGoods> {
             "LEFT JOIN t_user u ON g.user_id = u.user_id " +
             "LEFT JOIN (SELECT goods_id, image_url FROM t_goods_image WHERE sort = 1) gi ON g.goods_id = gi.goods_id " +
             "WHERE g.goods_status = 0 AND g.is_delete = 0 " +
+            "AND NOT EXISTS (SELECT 1 FROM t_blacklist tb WHERE tb.user_id = #{userId} AND tb.black_user_id = g.user_id AND tb.is_delete = 0) " +
             "ORDER BY recommend_score DESC " +
             "LIMIT #{pageSize} OFFSET #{offset} " +
             "</script>")
@@ -60,14 +61,15 @@ public interface TGoodsMapper extends BaseMapper<TGoods> {
      * 获取冷启动推荐商品（全校热门Top50）
      * 公式：点击量(15%) + 收藏数(20*数量) + 发布时效
      */
-    @Select("SELECT " +
+    @Select("<script>" +
+            "SELECT " +
             "  g.goods_id, g.goods_name, g.price, g.category_id, gc.category_name, " +
             "  g.view_count, 0 AS is_favorited, " +
             "  g.user_id, u.user_name, u.credit_star, u.credit_score, " +
             "  gi.image_url, DATE_FORMAT(g.create_time, '%Y-%m-%d %H:%i:%S') AS create_time, " +
             "  (g.view_count * 0.15 " +
             "   + COALESCE(favorite_count.cnt, 0) * 20 " +
-            "   + (CASE WHEN DATEDIFF(NOW(), g.create_time) <= 30 THEN (30 - DATEDIFF(NOW(), g.create_time)) * 0.8 ELSE 0 END) " +
+            "   + (CASE WHEN DATEDIFF(NOW(), g.create_time) &lt;= 30 THEN (30 - DATEDIFF(NOW(), g.create_time)) * 0.8 ELSE 0 END) " +
             "  ) AS hot_score " +
             "FROM t_goods g " +
             "LEFT JOIN t_goods_category gc ON g.category_id = gc.category_id " +
@@ -76,9 +78,17 @@ public interface TGoodsMapper extends BaseMapper<TGoods> {
             "LEFT JOIN (SELECT goods_id, COUNT(*) as cnt FROM t_favorite WHERE is_delete = 0 GROUP BY goods_id) favorite_count " +
             "  ON g.goods_id = favorite_count.goods_id " +
             "WHERE g.goods_status = 0 AND g.is_delete = 0 " +
+            "<if test=\"currentUserId != null and currentUserId != '' and currentUserId != 'anonymous'\">" +
+            "AND NOT EXISTS (SELECT 1 FROM t_blacklist tb WHERE tb.user_id = #{currentUserId} AND tb.black_user_id = g.user_id AND tb.is_delete = 0) " +
+            "</if>" +
             "ORDER BY hot_score DESC " +
-            "LIMIT #{limit}")
-    List<Map<String, Object>> getColdStartRecommendations(@Param("limit") Integer limit);
+            "LIMIT #{limit} OFFSET #{offset}" +
+            "</script>")
+    List<Map<String, Object>> getColdStartRecommendations(
+            @Param("limit") Integer limit,
+            @Param("offset") Long offset,
+            @Param("currentUserId") String currentUserId
+    );
 
     /**
      * 增加商品点击量

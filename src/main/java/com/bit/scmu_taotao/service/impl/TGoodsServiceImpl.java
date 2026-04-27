@@ -12,10 +12,13 @@ import com.bit.scmu_taotao.entity.TGoodsImage;
 import com.bit.scmu_taotao.entity.TUser;
 import com.bit.scmu_taotao.mapper.TGoodsImageMapper;
 import com.bit.scmu_taotao.service.RecommendationService;
+import com.bit.scmu_taotao.service.TBlacklistService;
 import com.bit.scmu_taotao.service.TGoodsCategoryService;
 import com.bit.scmu_taotao.service.TGoodsService;
 import com.bit.scmu_taotao.mapper.TGoodsMapper;
 import com.bit.scmu_taotao.service.TUserService;
+import com.bit.scmu_taotao.entity.TBlacklist;
+import com.bit.scmu_taotao.util.UserContext;
 import com.bit.scmu_taotao.util.common.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +26,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -49,6 +54,9 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
 
     @Autowired
     private TUserService tUserService;
+
+    @Autowired
+    private TBlacklistService tBlacklistService;
 
     private static final Set<String> VALID_TABS = Set.of(
             "recommend", "dormitory", "entertainment", "study", "pre-order"
@@ -92,7 +100,7 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
             return buildRecommendResult(currentUserId, safePage, safeSize);
         }
 
-        return buildNormalTabResult(effectiveTab, safePage, safeSize);
+        return buildNormalTabResult(effectiveTab, safePage, safeSize, currentUserId);
     }
 
     @Override
@@ -105,6 +113,7 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
 
             int safePage = page == null || page < 1 ? 1 : page;
             int safeSize = size == null || size < 1 ? 10 : Math.min(size, 50);
+            Set<String> blacklistedUserIds = getBlacklistedUserIds(UserContext.getUserId());
 
             LambdaQueryWrapper<TGoods> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(TGoods::getIsDelete, 0)
@@ -119,6 +128,10 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
                             .or()
                             .like((TGoods::getUseScene), trimmedKeyword))
                     .orderByDesc(TGoods::getCreateTime);
+
+            if (!blacklistedUserIds.isEmpty()) {
+                queryWrapper.notIn(TGoods::getUserId, blacklistedUserIds);
+            }
 
             Page<TGoods> goodsPage = this.page(new Page<>(safePage, safeSize), queryWrapper);
 
@@ -167,6 +180,7 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
         List<Map<String, Object>> list = new ArrayList<>();
         if (recommendResult.getList() != null) {
             for (RecommendGoodsDTO item : recommendResult.getList()) {
+                String publisherId = item.getPublisherInfo() == null ? null : item.getPublisherInfo().getUserId();
                 Map<String, Object> row = new HashMap<>();
                 row.put("id", item.getGoodsId());
                 row.put("name", item.getGoodsName());
@@ -175,7 +189,7 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
                 row.put("imgUrl", item.getImageUrl() == null ? "" : item.getImageUrl());
                 row.put("publishTime", item.getCreateTime());
                 row.put("publisherName", item.getPublisherInfo() == null ? "未知" : item.getPublisherInfo().getUserName());
-                row.put("publisherId", item.getPublisherInfo() == null ? "" : item.getPublisherInfo().getUserId());
+                row.put("publisherId", publisherId == null ? "" : publisherId);
                 list.add(row);
             }
         }
@@ -191,11 +205,16 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
         return Result.ok("请求成功", data);
     }
 
-    private Result buildNormalTabResult(String tab, int page, int size) {
+    private Result buildNormalTabResult(String tab, int page, int size, String currentUserId) {
+        Set<String> blacklistedUserIds = getBlacklistedUserIds(currentUserId);
         LambdaQueryWrapper<TGoods> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(TGoods::getIsDelete, 0)
                 .eq(TGoods::getGoodsStatus, 0)
                 .orderByDesc(TGoods::getCreateTime);
+
+        if (!blacklistedUserIds.isEmpty()) {
+            queryWrapper.notIn(TGoods::getUserId, blacklistedUserIds);
+        }
 
         if ("pre-order".equals(tab)) {
             queryWrapper.eq(TGoods::getGoodsType, 2);
@@ -250,6 +269,24 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
             return "";
         }
         return images.get(0).getImageUrl();
+    }
+
+    private Set<String> getBlacklistedUserIds(String currentUserId) {
+        if (currentUserId == null || currentUserId.isBlank()) {
+            return Collections.emptySet();
+        }
+        LambdaQueryWrapper<TBlacklist> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TBlacklist::getUserId, currentUserId)
+                .eq(TBlacklist::getIsDelete, 0)
+                .select(TBlacklist::getBlackUserId);
+        List<TBlacklist> blacklist = tBlacklistService.list(queryWrapper);
+        if (blacklist == null || blacklist.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return blacklist.stream()
+                .map(TBlacklist::getBlackUserId)
+                .filter(id -> id != null && !id.isBlank())
+                .collect(Collectors.toCollection(HashSet::new));
     }
 }
 

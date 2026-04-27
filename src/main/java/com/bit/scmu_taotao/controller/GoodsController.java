@@ -46,8 +46,6 @@ public class GoodsController {
     @Autowired
     private ChatSessionService chatSessionService;
     @Autowired
-    private ChatMessageService chatMessageService;
-    @Autowired
     private TGoodsImageService tGoodsImageService;
     @Autowired
     private RedisService redisService;
@@ -447,62 +445,11 @@ public class GoodsController {
 
     @GetMapping("/{goodsId}/trade")
     public Result contactSeller(@PathVariable("goodsId") @Min(1) int goodsId) {
-        // 1. 获取当前登录用户的 userId
         String userId = UserContext.getUserId();
         if (userId == null) {
             return Result.fail(401, "用户未登录");
         }
-
-        // 2. 获取商品信息，得到商家的 userId
-        TGoods goods = tGoodsService.getGoodsById(goodsId);
-        String sellerId = goods.getUserId();
-
-        // 3. 检查是否已经存在聊天会话
-        ChatSession session = chatSessionService.findSessionByUsers(userId, sellerId);
-
-        if (session != null) {
-            // 4. 如果会话存在，检查状态并更新
-            if (session.getStatus() != 1) { // 1-正常
-                session.setStatus(1);
-                chatSessionService.updateById(session);
-            }
-        } else {
-            // 5. 如果会话不存在，创建新会话
-            session = new ChatSession();
-            session.setUser1Id(userId);
-            session.setUser2Id(sellerId);
-            session.setStatus(1); // 1-正常
-            chatSessionService.save(session);
-
-            // 6. 初始化消息历史，发送系统消息
-            ChatMessage systemMessage = new ChatMessage();
-            systemMessage.setChatId(session.getChatId());
-            systemMessage.setSendId("system");
-            systemMessage.setReceiveId(userId);
-            systemMessage.setMsgType(0); // 0-系统
-            systemMessage.setMsgContent("您已开始与商家沟通，请注意文明交流");
-            systemMessage.setIsRead(0); // 0-未读
-            systemMessage.setIsDelete(0);
-            chatMessageService.save(systemMessage);
-
-            // 7. 同时向商家发送系统消息
-            ChatMessage sellerMessage = new ChatMessage();
-            sellerMessage.setChatId(session.getChatId());
-            sellerMessage.setSendId("system");
-            sellerMessage.setReceiveId(sellerId);
-            sellerMessage.setMsgType(0); // 0-系统
-            sellerMessage.setMsgContent("有用户对您的商品感兴趣，开始了沟通");
-            sellerMessage.setIsRead(0); // 0-未读
-            sellerMessage.setIsDelete(0);
-            chatMessageService.save(sellerMessage);
-        }
-
-        // 8. 构建响应数据
-        java.util.Map<String, Object> data = new java.util.HashMap<>();
-        data.put("chatId", session.getChatId());
-
-        // 9. 返回成功响应
-        return Result.ok("联系商家成功", data);
+        return chatSessionService.contactSeller((long) goodsId, userId);
     }
 
 

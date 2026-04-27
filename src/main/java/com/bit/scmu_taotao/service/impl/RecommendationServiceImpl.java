@@ -46,6 +46,8 @@ public class RecommendationServiceImpl implements RecommendationService {
     public RecommendListResponseDTO getRecommendations(String userId, Integer page, Integer pageSize) {
         int safePage = page == null || page < 1 ? 1 : page;
         int safePageSize = pageSize == null || pageSize < 1 ? 10 : pageSize;
+        long offset = (long) (safePage - 1) * safePageSize;
+        boolean anonymousUser = userId == null || userId.isBlank() || "anonymous".equalsIgnoreCase(userId);
 
         RecommendListResponseDTO response = new RecommendListResponseDTO();
         response.setPage(safePage);
@@ -68,17 +70,23 @@ public class RecommendationServiceImpl implements RecommendationService {
                     configService.getConfigValue("view_count_weight").doubleValue(),
                     configService.getConfigValue("recent_publish_bonus").doubleValue(),
                     safePageSize,
-                    (long) (safePage - 1) * safePageSize
+                    offset
             );
             response.setList(mapToGoodsDTOList(results));
             response.setTotal((long) response.getList().size());
         } else {
             // 3. 无浏览记录 -> 冷启动推荐
             response.setRecommendType("coldstart");
-            List<Map<String, Object>> results = getHotGoodsFromCache(safePageSize, safePage);
+            List<Map<String, Object>> results;
+            if (anonymousUser) {
+                results = getHotGoodsFromCache(safePageSize, safePage);
+                response.setTotal((long) Math.min(results.size(),
+                        configService.getConfigValue("hot_cache_count").intValue()));
+            } else {
+                results = tGoodsMapper.getColdStartRecommendations(safePageSize, offset, userId);
+                response.setTotal((long) results.size());
+            }
             response.setList(mapToGoodsDTOList(results));
-            response.setTotal((long) Math.min(results.size(),
-                    configService.getConfigValue("hot_cache_count").intValue()));
         }
 
         return response;
@@ -154,7 +162,7 @@ public class RecommendationServiceImpl implements RecommendationService {
     public void refreshHotGoodsCache() {
         try {
             int hotCacheCount = configService.getConfigValue("hot_cache_count").intValue();
-            List<Map<String, Object>> hotGoods = tGoodsMapper.getColdStartRecommendations(hotCacheCount);
+            List<Map<String, Object>> hotGoods = tGoodsMapper.getColdStartRecommendations(hotCacheCount, 0L, null);
 
             int hotCacheExpireHours = configService.getConfigValue("hot_cache_expire_hours").intValue();
             redisService.setWithExpire(HOT_GOODS_CACHE_KEY, hotGoods, hotCacheExpireHours, TimeUnit.HOURS);
@@ -271,7 +279,7 @@ public class RecommendationServiceImpl implements RecommendationService {
         if (!(cachedObj instanceof List)) {
             // 缓存失效，重新查询
             int hotCacheCount = configService.getConfigValue("hot_cache_count").intValue();
-            allHotGoods = tGoodsMapper.getColdStartRecommendations(hotCacheCount);
+            allHotGoods = tGoodsMapper.getColdStartRecommendations(hotCacheCount, 0L, null);
             int hotCacheExpireHours = configService.getConfigValue("hot_cache_expire_hours").intValue();
             redisService.setWithExpire(HOT_GOODS_CACHE_KEY, allHotGoods, hotCacheExpireHours, TimeUnit.HOURS);
         } else {

@@ -242,6 +242,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
                 session.setLastTime(now);
                 this.save(session);
                 created = true;
+                appendContactInitSystemMessages(session.getChatId(), userId, sellerId);
             } else {
                 if (!Integer.valueOf(1).equals(session.getStatus())) {
                     session.setStatus(1);
@@ -469,5 +470,31 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
         updateChatSession.setLastMsg(content);
         updateChatSession.setLastTime(new Date());
         this.updateById(updateChatSession);
+    }
+
+    private void appendContactInitSystemMessages(Long chatId, String buyerId, String sellerId) {
+        if (chatId == null || !StringUtils.hasText(buyerId) || !StringUtils.hasText(sellerId)) {
+            return;
+        }
+
+        ChatMessage buyerMessage = new ChatMessage();
+        buyerMessage.setChatId(chatId);
+        buyerMessage.setSendId("system");
+        buyerMessage.setReceiveId(buyerId);
+        buyerMessage.setMsgType(0);
+        buyerMessage.setMsgContent("您已开始与商家沟通，请注意文明交流");
+        buyerMessage.setIsRead(0);
+        buyerMessage.setIsDelete(0);
+        chatMessageMapper.insert(buyerMessage);
+
+        ChatMessage sellerMessage = new ChatMessage();
+        sellerMessage.setChatId(chatId);
+        sellerMessage.setSendId("system");
+        sellerMessage.setReceiveId(sellerId);
+        sellerMessage.setMsgType(0);
+        sellerMessage.setMsgContent("有用户对您的商品感兴趣，开始了沟通");
+        sellerMessage.setIsRead(0);
+        sellerMessage.setIsDelete(0);
+        chatMessageMapper.insert(sellerMessage);
     }
 }
