@@ -25,8 +25,7 @@ public class FileUploadController {
     private final TGoodsImageService tGoodsImageService;
 
     @PostMapping("/upload/images")
-    public Result uploadImages(@RequestParam("file") MultipartFile[] files,
-                              @RequestParam(value = "goodsId", required = false) Long goodsId) {
+    public Result uploadImages(@RequestParam("file") MultipartFile[] files) {
 
         String userId = UserContext.getUserId();
         if (userId == null || userId.isBlank()) {
@@ -35,7 +34,7 @@ public class FileUploadController {
 
         java.util.List<String> imgUrls = new java.util.ArrayList<>();
         for (MultipartFile file : files) {
-            UploadImageResponse response = imageUploadService.uploadImage(file, userId, goodsId);
+            UploadImageResponse response = imageUploadService.uploadImage(file, userId);
             imgUrls.add(response.getImageUrl());
         }
         java.util.Map<String, java.util.List<String>> resultMap = new java.util.HashMap<>();

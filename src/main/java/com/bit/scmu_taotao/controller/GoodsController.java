@@ -23,6 +23,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,10 +37,8 @@ public class GoodsController {
 
     @Autowired
     private TGoodsService tGoodsService;
-
     @Autowired
     private TUserService tUserService;
-
     @Autowired
     private TFavoriteService tFavoriteService;
     @Autowired
@@ -139,11 +139,20 @@ public class GoodsController {
         // 6. 保存商品图片
         if (imgUrls != null && !imgUrls.isEmpty()) {
             int sort = 1;
+            Set<String> uniq = new LinkedHashSet<>(imgUrls);
             for (String imgUrl : imgUrls) {
+                if (imgUrl == null || imgUrl.isBlank()) {
+                    continue;
+                }
+                String objectKey = ObjectKeyParser.extractObjectKey(imgUrl, s3StorageProperties.getBucket());
+                if (objectKey == null || objectKey.isBlank()) {
+                    continue; // 或 return Result.fail("图片地址无效")
+                }
                 TGoodsImage goodsImage = new TGoodsImage();
                 goodsImage.setGoodsId(goods.getGoodsId());
                 goodsImage.setImageUrl(imgUrl);
                 goodsImage.setSort(sort++);
+//                goodsImage.setCreateTime(LocalDateTime.now());
                 tGoodsImageService.save(goodsImage);
             }
         }
@@ -358,8 +367,9 @@ public class GoodsController {
         data.setExchangeAddr(goods.getExchangePlace());
 
         // 3. 格式化发布时间
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        data.setPublishTime(sdf.format(goods.getCreateTime()));
+        // 3. 格式化发布时间
+        java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        data.setPublishTime(goods.getCreateTime().format(dtf));
 
         // 4. 设置商品类型
         data.setType(goods.getGoodsType() == 1 ? "sell" : "buy");

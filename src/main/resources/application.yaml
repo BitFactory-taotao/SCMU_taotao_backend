@@ -51,12 +51,13 @@ logging:
 storage:
   s3:
     #    endpoint: http://localhost:9000
-    endpoint: http://aijiu.f1.luyouxia.net:15927
-    region: us-east-1
-    bucket: taotao
-    access-key: taotao
-    secret-key: taotao123456
-    path-style-access: true
+    #    endpoint: http://aijiu.f1.luyouxia.net:15927
+    endpoint: https://oss-cn-shanghai.aliyuncs.com
+    region: cn-shanghai
+    bucket: scmu-taotao
+    access-key: ${ALI_ACCESS_KEY}
+    secret-key: ${ALI_SECRET_KEY}
+    path-style-access: false
     max-file-size: 5MB
     allowed-types: [ jpg, jpeg, png, webp ]
   # 推荐系统配置(没用上）

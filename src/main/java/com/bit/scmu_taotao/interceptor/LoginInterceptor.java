@@ -29,18 +29,17 @@ public class LoginInterceptor implements HandlerInterceptor {
     // ObjectMapper 作为工具类直接实例化，无需依赖 Spring 容器
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // 公共 GET 路由：/goods, /goods/search, /goods/{goodsId}, /user/{userId}/home
-    private static final Pattern GOODS_DETAIL_PATTERN = Pattern.compile("^/goods/\\d+$");
-    private static final Pattern USER_HOME_PATTERN = Pattern.compile("^/user/[^/]+/home$");
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         String method = request.getMethod();
-        // 用 servletPath 避免 context-path 干扰匹配
-        String path = request.getServletPath();
+        String requestUri = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        String path = requestUri.substring(contextPath.length());
+
         // 1. 获取 Token
         String token = request.getHeader("Authorization");
-        log.info("收到请求：{} {}，Token：{}", method,path, token);
+        log.info("收到请求：{}，requestURI={}，path={}，Token={}", method, requestUri, path, token);
 
         // 放行预检请求，避免 CORS 失败
         if ("OPTIONS".equalsIgnoreCase(method)) {
@@ -70,10 +69,11 @@ public class LoginInterceptor implements HandlerInterceptor {
         if (path.contains("/ws")) {
             return true;
         }
-        return "/goods".equals(path)
-                || "/goods/search".equals(path)
-                || GOODS_DETAIL_PATTERN.matcher(path).matches()
-                || USER_HOME_PATTERN.matcher(path).matches();
+        // 公共 GET 路由：/goods, /goods/search, /goods/{goodsId}, /user/{userId}/home
+        return path.endsWith("/goods")
+                || path.endsWith("/goods/search")
+                || path.matches(".*/goods/\\d+")
+                || path.matches(".*/user/[^/]+/home");
     }
     private boolean trySetUserContextFromToken(String token, String path) {
         if (!hasText(token)) {

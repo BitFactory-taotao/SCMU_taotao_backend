@@ -1,13 +1,11 @@
 package com.bit.scmu_taotao.service.impl;
 
-import cn.hutool.crypto.SecureUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.bit.scmu_taotao.client.HttpResponseHandler;
 import com.bit.scmu_taotao.client.HttpResponseHandlerImpl;
-import com.bit.scmu_taotao.client.HttpResponseResult;
 import com.bit.scmu_taotao.client.thread.WebVpnLoginThread;
 import com.bit.scmu_taotao.dto.GoodsEditRequest;
 import com.bit.scmu_taotao.dto.goods.PublisherDTO;
@@ -21,8 +19,6 @@ import com.bit.scmu_taotao.util.common.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.CookieStore;
 import org.apache.http.impl.client.BasicCookieStore;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,7 +36,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
-        implements TUserService{
+        implements TUserService {
 
     @Autowired
     private RedisService redisService;
@@ -60,6 +56,8 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
     private TTradeService tradeService;
     @Autowired
     private TEvaluateService evaluateService;
+    @Autowired
+    private TEvaluateImageService evaluateImageService;
 
     // WebVPN 地址（从配置文件读取或默认值）
     private static final String WEBVPN_URL = "https://webvpn.scuec.edu.cn/";
@@ -319,7 +317,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
     }
 
     @Override
-    public Result getSellGoods(Integer page, Integer size,String goodsStatus) {
+    public Result getSellGoods(Integer page, Integer size, String goodsStatus) {
         try {
             if (goodsStatus == null) {
                 return Result.fail("参数错误：goodsStatus不能为空");
@@ -337,7 +335,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             queryWrapper.eq(TGoods::getUserId, userId)
                     .eq(TGoods::getIsDelete, 0)
                     .eq(TGoods::getGoodsStatus, goodsStatusInt)
-                    .eq(TGoods::getGoodsType,1)
+                    .eq(TGoods::getGoodsType, 1)
                     .orderByDesc(TGoods::getCreateTime);
 
             Page<TGoods> goodsPage = new Page<>(page, size);
@@ -358,14 +356,14 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
                 item.put("imgUrl", mainImg != null ? mainImg : "");
                 // 发布时间
                 if (goods.getCreateTime() != null) {
-                    item.put("publishTime",goods.getCreateTime());
+                    item.put("publishTime", goods.getCreateTime());
                 } else {
                     item.put("publishTime", "");
                 }
                 // 查询发布者信息
                 item.put("publisherName", UserContext.getUsername() != null ? UserContext.getUsername() : "未知");
                 item.put("publisherId", goods.getUserId());
-                item.put("goodsStatus",  STATUS_INT_TO_STR.getOrDefault(goods.getGoodsStatus(), "未知"));
+                item.put("goodsStatus", STATUS_INT_TO_STR.getOrDefault(goods.getGoodsStatus(), "未知"));
                 list.add(item);
             }
             // 计算总页数
@@ -599,16 +597,15 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             log.info("获取预购商品列表成功：userId={}, total={}, pages={}", userId, total, pages);
             return Result.ok("请求成功", data);
 
-        }
-        catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             log.error("获取预购商品列表参数错误：{}", e.getMessage(), e);
             return Result.fail("参数错误：" + e.getMessage());
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.error("获取预购商品列表失败：{}", e.getMessage(), e);
             return Result.fail("获取预购商品列表失败，请稍后重试");
         }
     }
+
     /**
      * 编辑我的商品/预购需求
      */
@@ -688,13 +685,14 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             }
 
             log.info("商品编辑成功，goodsId: {}", goodsId);
-            return Result.ok("编辑成功",null);
+            return Result.ok("编辑成功", null);
 
         } catch (Exception e) {
             log.error("编辑商品异常，goodsId: {}", goodsId, e);
             return Result.fail("编辑失败，系统异常");
         }
     }
+
     /**
      * 下架我的商品/预购需求
      */
@@ -747,7 +745,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             }
 
             log.info("商品下架成功，goodsId: {}", goodsId);
-            return Result.ok("下架成功",null);
+            return Result.ok("下架成功", null);
 
         } catch (Exception e) {
             log.error("下架商品异常，goodsId: {}", goodsId, e);
@@ -807,7 +805,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             goodsImageService.remove(imageWrapper);
 
             log.info("商品删除成功，goodsId: {}", goodsId);
-            return Result.ok("删除成功",null);
+            return Result.ok("删除成功", null);
 
         } catch (Exception e) {
             log.error("删除商品异常，goodsId: {}", goodsId, e);
@@ -894,6 +892,25 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
                     .orderByDesc(TEvaluate::getCreateTime);
             List<TEvaluate> evaluates = evaluateService.list(evalWrapper);
 
+            // 6.1 批量查询评价图片
+            List<Long> evalIds = evaluates.stream()
+                    .map(TEvaluate::getEvalId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            Map<Long, List<String>> evalImageMap = new HashMap<>();
+            if (!evalIds.isEmpty()) {
+                List<TEvaluateImage> evaluateImages = evaluateImageService.list(
+                        new LambdaQueryWrapper<TEvaluateImage>()
+                                .in(TEvaluateImage::getEvalId, evalIds)
+                                .orderByAsc(TEvaluateImage::getEvalImgId)
+                );
+                evalImageMap = evaluateImages.stream()
+                        .collect(Collectors.groupingBy(
+                                TEvaluateImage::getEvalId,
+                                Collectors.mapping(TEvaluateImage::getImgUrl, Collectors.toList())
+                        ));
+            }
+
             // 7. 查询评价者信息（批量）
             Set<String> evaluatorIds = new HashSet<>();
             for (TEvaluate eval : evaluates) {
@@ -927,6 +944,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
                 evalItem.put("evalContent", eval.getEvalContent() != null ? eval.getEvalContent() : "");
                 evalItem.put("createTime", eval.getCreateTime());
                 evalItem.put("buyerName", evaluatorName);
+                evalItem.put("imgUrls", evalImageMap.getOrDefault(eval.getEvalId(), List.of()));
 
                 evaluateList.add(evalItem);
                 totalScore += (eval.getTotalScore() != null ? eval.getTotalScore() : 0);
@@ -980,6 +998,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         }
         return result;
     }
+
     @Override
     public PublisherDTO getPublisherInfo(String userId) {
         // 查询用户信息

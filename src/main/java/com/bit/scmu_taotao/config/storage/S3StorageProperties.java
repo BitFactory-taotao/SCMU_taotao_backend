@@ -11,11 +11,11 @@ import java.util.List;
 @ConfigurationProperties(prefix = "storage.s3")
 public class S3StorageProperties {
     private String endpoint;
-    private String region = "us-east-1";
+    private String region = "cn-shanghai";
     private String bucket;
     private String accessKey;
     private String secretKey;
-    private boolean pathStyleAccess = true;
+    private boolean pathStyleAccess = false;
     private DataSize maxFileSize = DataSize.ofMegabytes(5);
     private List<String> allowedTypes = new ArrayList<>();
 }

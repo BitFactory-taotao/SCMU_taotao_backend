@@ -2,9 +2,7 @@ package com.bit.scmu_taotao.service.impl.upload;
 
 import com.bit.scmu_taotao.config.storage.S3StorageProperties;
 import com.bit.scmu_taotao.dto.upload.UploadImageResponse;
-import com.bit.scmu_taotao.entity.TGoodsImage;
 import com.bit.scmu_taotao.exception.StorageException;
-import com.bit.scmu_taotao.service.TGoodsImageService;
 import com.bit.scmu_taotao.service.storage.ObjectStorageService;
 import com.bit.scmu_taotao.service.upload.ImageUploadService;
 import com.bit.scmu_taotao.util.storage.ObjectKeyGenerator;
@@ -14,8 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
-import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -26,11 +22,10 @@ import java.util.stream.Collectors;
 public class ImageUploadServiceImpl implements ImageUploadService {
 
     private final ObjectStorageService objectStorageService;
-    private final TGoodsImageService goodsImageService;
     private final S3StorageProperties s3Properties;
 
     @Override
-    public UploadImageResponse uploadImage(MultipartFile file, String userId, Long goodsId) {
+    public UploadImageResponse uploadImage(MultipartFile file, String userId) {
         validate(file);
 
         String objectKey = ObjectKeyGenerator.forUserImage(userId, file.getOriginalFilename());
@@ -40,19 +35,10 @@ public class ImageUploadServiceImpl implements ImageUploadService {
             objectStorageService.putObject(objectKey, inputStream, file.getSize(), contentType);
             String imageUrl = objectStorageService.getObjectUrl(objectKey);
 
-            if (goodsId != null) {
-                TGoodsImage goodsImage = new TGoodsImage();
-                goodsImage.setGoodsId(goodsId);
-                goodsImage.setImageUrl(imageUrl);
-                goodsImage.setSort(0);
-                goodsImage.setCreateTime(LocalDateTime.now());
-                goodsImageService.save(goodsImage);
-            }
-
-            log.info("image uploaded, userId={}, goodsId={}, key={}", userId, goodsId, objectKey);
+            log.info("image uploaded, userId={}, key={}", userId, objectKey);
             return new UploadImageResponse(objectKey, imageUrl, file.getSize(), contentType, file.getOriginalFilename());
         } catch (Exception e) {
-            log.error("image upload failed, userId={}, goodsId={}", userId, goodsId, e);
+            log.error("image upload failed, userId={}", userId, e);
             throw new StorageException("图片上传失败");
         }
     }
