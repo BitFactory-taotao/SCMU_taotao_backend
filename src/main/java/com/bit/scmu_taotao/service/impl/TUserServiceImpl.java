@@ -1,5 +1,6 @@
 package com.bit.scmu_taotao.service.impl;
 
+import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -20,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.CookieStore;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,6 +60,8 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
     private TEvaluateService evaluateService;
     @Autowired
     private TEvaluateImageService evaluateImageService;
+    @Value("${app.auth.demo-mode:false}")
+    private boolean demoMode;
 
     // WebVPN 地址（从配置文件读取或默认值）
     private static final String WEBVPN_URL = "https://webvpn.scuec.edu.cn/";
@@ -77,6 +81,34 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         try {
             log.info("用户登录：userId={}", userId);
 
+            if (demoMode) {
+                log.info("演示模式登录：userId={}", userId);
+
+                TUser user = this.getById(userId);
+                if (user == null) {
+                    user = new TUser();
+                    user.setUserId(userId);
+                    user.setUserName("演示用户");
+                    user.setCreditScore(100);
+                    user.setCreditStar(new BigDecimal("5.0"));
+                    user.setCreateTime(java.time.LocalDateTime.now());
+                    user.setUpdateTime(java.time.LocalDateTime.now());
+                    user.setIsDelete(0);
+                    this.save(user);
+                }
+
+                String token = tokenUtil.generateToken(userId);
+
+                Map<String, Object> userInfo = new HashMap<>();
+                userInfo.put("userId", user.getUserId());
+                userInfo.put("name", user.getUserName());
+
+                Map<String, Object> responseData = new HashMap<>();
+                responseData.put("token", token);
+                responseData.put("userInfo", userInfo);
+
+                return Result.ok("登录成功", responseData);
+            }
             // 1. 通过 WebVPN 进行身份验证
             CookieStore cookieStore = new BasicCookieStore();
             WebVpnLoginThread loginThread = new WebVpnLoginThread(

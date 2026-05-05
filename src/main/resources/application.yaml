@@ -79,5 +79,7 @@ storage:
 goods:
   # 敏感词库（用逗号分隔）
   sensitive-words: "高仿,A货,套现,刷单,假证,代考,作弊,毒品,枪支,烟草,电子烟,色情,催情,迷药,走私,假药,医疗器械,堕胎药,流产药"
-
+app:
+  auth:
+    demo-mode: false  # 演示模式开启
 
