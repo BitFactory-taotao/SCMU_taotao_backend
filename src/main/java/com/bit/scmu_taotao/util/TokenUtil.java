@@ -90,10 +90,13 @@ public class TokenUtil {
         if (token != null && !token.isEmpty()) {
             Object userIdObj = redisService.get(token);
             if (userIdObj != null) {
-                String userId = userIdObj.toString();
-                // 删除 token 和 userId 对应的 token 记录
+                String userId = userIdObj.toString().replace("\"", "");
                 redisTemplate.delete(token);
-                redisTemplate.delete(TOKEN_PREFIX + userId);
+                if (userId.startsWith("ADMIN:")) {
+                    redisTemplate.delete("ADMIN_TOKEN_KEY:" + userId.substring(6));
+                } else {
+                    redisTemplate.delete(TOKEN_PREFIX + userId);
+                }
             } else {
                 redisTemplate.delete(token);
             }

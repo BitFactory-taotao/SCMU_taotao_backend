@@ -336,7 +336,6 @@ public class GoodsController {
 
     @GetMapping("/{goodsId}")
     public Result getGoods(@PathVariable("goodsId") @Min(1) int goodsId) {
-        // todo 该接口无返回值
         // 1. 获取商品基本信息
         TGoods goods = tGoodsService.getGoodsById(goodsId);
 
@@ -366,7 +365,6 @@ public class GoodsController {
         data.setPurpose(goods.getUseScene());
         data.setExchangeAddr(goods.getExchangePlace());
 
-        // 3. 格式化发布时间
         // 3. 格式化发布时间
         java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         data.setPublishTime(goods.getCreateTime().format(dtf));

@@ -73,6 +73,12 @@ public class TGoods {
     private Integer goodsStatus;
 
     private Integer viewCount; // 新增：商品点击量
+
+    // 审核结论: 0未审, 1已审, 2违规下架
+    private Integer isAudited;
+
+    // 下架/驳回原因
+    private String rejectReason;
     /**
      * 发布时间
      */

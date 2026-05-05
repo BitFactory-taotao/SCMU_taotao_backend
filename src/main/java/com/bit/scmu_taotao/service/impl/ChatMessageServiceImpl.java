@@ -38,7 +38,7 @@ public class ChatMessageServiceImpl extends ServiceImpl<ChatMessageMapper, ChatM
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     // TODO 设置为自己的阿里云 OSS 存储桶（Bucket）的域名
     private static final Set<String> ALLOWED_MEDIA_HOSTS = Set.of(
-            "campus-taotao.oss-cn-beijing.aliyuncs.com"
+            "scmu-taotao.oss-cn-shanghai.aliyuncs.com"
     );
     @Autowired
     private ChatSessionMapper chatSessionMapper;

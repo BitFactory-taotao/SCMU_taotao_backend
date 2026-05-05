@@ -37,6 +37,8 @@ public class TFeedback {
      */
     private Integer feedbackStatus;
 
+    // 管理员是否已读: 0未读, 1已读
+    private Integer isRead;
     /**
      * 回复内容
      */
