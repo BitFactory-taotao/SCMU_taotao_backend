@@ -38,4 +38,12 @@ public interface TGoodsService extends IService<TGoods> {
     Result getHomeGoodsList(String tab, String category, Integer page, Integer size, String currentUserId);
 
     Result searchHomeGoods(@NotBlank(message = "keyword不能为空") String keyword, @Min(value = 1, message = "page必须大于等于1") Integer page, @Min(value = 1, message = "size必须大于等于1") @Max(value = 50, message = "size不能超过50") Integer size);
+
+    Result getAuditGoodsList(Integer auditStatus, String category, String keyword, Integer page, Integer size);
+
+    Result getAuditGoodsDetail(Long goodsId);
+
+    Result approveAuditGoods(List<Long> goodsIds);
+
+    Result rejectAuditGoods(List<Long> goodsIds, String reason);
 }

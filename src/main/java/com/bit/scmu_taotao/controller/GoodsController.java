@@ -131,6 +131,8 @@ public class GoodsController {
         goods.setExchangePlace(exchangeAddr);
         goods.setGoodsType("sell".equals(type) ? 1 : 2); // 1=出售, 2=预购
         goods.setGoodsStatus(0); // 0=在售
+        goods.setIsAudited(0); // 0=待巡检
+        goods.setRejectReason(null);
         goods.setIsDelete(0);
 
         // 5. 保存商品

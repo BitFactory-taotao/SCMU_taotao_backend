@@ -684,10 +684,8 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             Integer goodsType = "sell".equals(request.getType()) ? 1 : 2;
             goods.setGoodsType(goodsType);
 
-            // 如果商品在审核状态，编辑后需要重新审核
-            if (goods.getGoodsStatus() == 3) {
-                goods.setGoodsStatus(3); // 保持审核状态
-            }
+            goods.setIsAudited(0);
+            goods.setRejectReason(null);
 
             boolean updateResult = goodsService.updateById(goods);
             if (!updateResult) {
@@ -1043,6 +1041,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         PublisherDTO publisher = new PublisherDTO();
         publisher.setId(user.getUserId());
         publisher.setName(user.getUserName());
+        publisher.setAvatar(user.getAvatar());
         publisher.setCreditScore(user.getCreditScore());
         // 将 BigDecimal 转换为 Double
         if (user.getCreditStar() != null) {

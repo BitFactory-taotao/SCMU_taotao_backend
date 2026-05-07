@@ -4,20 +4,15 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.bit.scmu_taotao.dto.admin.GoodsAuditDetailDTO;
+import com.bit.scmu_taotao.dto.admin.GoodsAuditListItemDTO;
 import com.bit.scmu_taotao.dto.recommend.RecommendGoodsDTO;
 import com.bit.scmu_taotao.dto.recommend.RecommendListResponseDTO;
-import com.bit.scmu_taotao.entity.TGoods;
-import com.bit.scmu_taotao.entity.TGoodsCategory;
-import com.bit.scmu_taotao.entity.TGoodsImage;
-import com.bit.scmu_taotao.entity.TUser;
+import com.bit.scmu_taotao.entity.*;
+import com.bit.scmu_taotao.mapper.ChatMessageMapper;
 import com.bit.scmu_taotao.mapper.TGoodsImageMapper;
-import com.bit.scmu_taotao.service.RecommendationService;
-import com.bit.scmu_taotao.service.TBlacklistService;
-import com.bit.scmu_taotao.service.TGoodsCategoryService;
-import com.bit.scmu_taotao.service.TGoodsService;
+import com.bit.scmu_taotao.service.*;
 import com.bit.scmu_taotao.mapper.TGoodsMapper;
-import com.bit.scmu_taotao.service.TUserService;
-import com.bit.scmu_taotao.entity.TBlacklist;
 import com.bit.scmu_taotao.util.UserContext;
 import com.bit.scmu_taotao.util.common.Result;
 import lombok.extern.slf4j.Slf4j;
@@ -25,13 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -58,11 +47,26 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
     @Autowired
     private TBlacklistService tBlacklistService;
 
+    @Autowired
+    private ChatMessageMapper chatMessageMapper;
+
+    @Autowired
+    private StompPushService stompPushService;
+
+    @Autowired
+    private ChatSessionService chatSessionService;
+
     private static final Set<String> VALID_TABS = Set.of(
             "recommend", "dormitory", "entertainment", "study", "pre-order"
     );
 
     private static final Map<String, String> TAB_TO_CATEGORY_NAME = Map.of(
+            "dormitory", "宿舍用品",
+            "entertainment", "娱乐用品",
+            "study", "学习用品"
+    );
+
+    private static final Map<String, String> AUDIT_CATEGORY_NAME = Map.of(
             "dormitory", "宿舍用品",
             "entertainment", "娱乐用品",
             "study", "学习用品"
@@ -163,6 +167,217 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
         }
     }
 
+    @Override
+    public Result getAuditGoodsList(Integer auditStatus, String category, String keyword, Integer page, Integer size) {
+        try {
+            int safeStatus = auditStatus == null ? 0 : auditStatus;
+            if (safeStatus < 0 || safeStatus > 2) {
+                return Result.fail(400, "auditStatus必须在0到2之间");
+            }
+
+            int safePage = page == null || page < 1 ? 1 : page;
+            int safeSize = size == null || size < 1 ? 10 : Math.min(size, 50);
+            String trimmedKeyword = keyword == null ? "" : keyword.trim();
+
+            LambdaQueryWrapper<TGoods> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(TGoods::getIsDelete, 0);
+            if (safeStatus == 0) {
+                queryWrapper.and(w -> w.eq(TGoods::getIsAudited, 0).or().isNull(TGoods::getIsAudited));
+            } else {
+                queryWrapper.eq(TGoods::getIsAudited, safeStatus);
+            }
+
+            if (category != null && !category.isBlank()) {
+                Integer categoryId = resolveAuditCategoryId(category.trim());
+                if (categoryId == null) {
+                    return Result.fail(400, "category参数非法");
+                }
+                queryWrapper.eq(TGoods::getCategoryId, categoryId);
+            }
+
+            if (!trimmedKeyword.isEmpty()) {
+                queryWrapper.and(w -> w.like(TGoods::getGoodsName, trimmedKeyword)
+                        .or()
+                        .like(TGoods::getGoodsNote, trimmedKeyword)
+                        .or()
+                        .like(TGoods::getUserId, trimmedKeyword));
+            }
+
+            queryWrapper.orderByDesc(TGoods::getCreateTime);
+
+            Page<TGoods> goodsPage = this.page(new Page<>(safePage, safeSize), queryWrapper);
+            List<GoodsAuditListItemDTO> list = goodsPage.getRecords().stream()
+                    .map(this::buildAuditGoodsListItem)
+                    .collect(Collectors.toList());
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("total", goodsPage.getTotal());
+            data.put("pages", goodsPage.getPages());
+            data.put("list", list);
+
+            log.info("商品巡检列表查询成功：auditStatus={}, category={}, keyword={}, page={}, size={}, total={}", safeStatus, category, trimmedKeyword, safePage, safeSize, goodsPage.getTotal());
+            return Result.ok("请求成功", data);
+        } catch (Exception e) {
+            log.error("商品巡检列表查询失败：auditStatus={}, category={}, keyword={}, page={}, size={}", auditStatus, category, keyword, page, size, e);
+            return Result.fail("商品巡检列表查询失败，请稍后重试");
+        }
+    }
+
+    @Override
+    public Result getAuditGoodsDetail(Long goodsId) {
+        try {
+            if (goodsId == null || goodsId < 1) {
+                return Result.fail(400, "goodsId必须大于0");
+            }
+
+            TGoods goods = this.getById(goodsId);
+            if (goods == null || Integer.valueOf(1).equals(goods.getIsDelete())) {
+                return Result.fail(404, "商品不存在");
+            }
+
+            GoodsAuditDetailDTO detail = new GoodsAuditDetailDTO();
+            detail.setId(goods.getGoodsId());
+            detail.setName(goods.getGoodsName());
+            detail.setDesc(goods.getGoodsDesc());
+            detail.setPrice(goods.getPrice());
+            detail.setPurpose(goods.getUseScene());
+            detail.setExchangeAddr(goods.getExchangePlace());
+            detail.setImgUrls(getGoodsImageUrls(goodsId.intValue()));
+            detail.setPublishTime(goods.getCreateTime() == null ? null : goods.getCreateTime().format(DATE_TIME_FORMATTER));
+            detail.setPublisher(tUserService.getPublisherInfo(goods.getUserId()));
+            detail.setType(goods.getGoodsType() != null && goods.getGoodsType() == 1 ? "sell" : "buy");
+
+            log.info("商品巡检详情查询成功：goodsId={}", goodsId);
+            return Result.ok("请求成功", detail);
+        } catch (Exception e) {
+            log.error("商品巡检详情查询失败：goodsId={}", goodsId, e);
+            return Result.fail("商品巡检详情查询失败，请稍后重试");
+        }
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
+    public Result approveAuditGoods(List<Long> goodsIds) {
+        try {
+            List<Long> ids = normalizeGoodsIds(goodsIds);
+            if (ids.isEmpty()) {
+                return Result.fail(400, "goodsIds不能为空");
+            }
+
+            List<TGoods> goodsList = this.list(new LambdaQueryWrapper<TGoods>()
+                    .in(TGoods::getGoodsId, ids)
+                    .eq(TGoods::getIsDelete, 0));
+            if (goodsList.isEmpty()) {
+                return Result.fail(404, "商品不存在");
+            }
+
+            for (TGoods goods : goodsList) {
+                goods.setIsAudited(1);
+                goods.setRejectReason(null);
+                if (!this.updateById(goods)) {
+                    throw new IllegalStateException("更新商品审核状态失败，goodsId=" + goods.getGoodsId());
+                }
+            }
+
+            log.info("商品巡检通过成功：goodsIds={}, count={}", ids, goodsList.size());
+            return Result.ok("操作成功", null);
+        } catch (Exception e) {
+            log.error("商品巡检通过失败：goodsIds={}", goodsIds, e);
+            return Result.fail("商品巡检通过失败，请稍后重试");
+        }
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
+    public Result rejectAuditGoods(List<Long> goodsIds, String reason) {
+        try {
+            List<Long> ids = normalizeGoodsIds(goodsIds);
+            String trimmedReason = reason == null ? "" : reason.trim();
+            if (ids.isEmpty()) {
+                return Result.fail(400, "goodsIds不能为空");
+            }
+            if (trimmedReason.isEmpty()) {
+                return Result.fail(400, "reason不能为空");
+            }
+
+            List<TGoods> goodsList = this.list(new LambdaQueryWrapper<TGoods>()
+                    .in(TGoods::getGoodsId, ids)
+                    .eq(TGoods::getIsDelete, 0));
+            if (goodsList.isEmpty()) {
+                return Result.fail(404, "商品不存在");
+            }
+
+            for (TGoods goods : goodsList) {
+                goods.setGoodsStatus(2);
+                goods.setIsAudited(2);
+                goods.setRejectReason(trimmedReason);
+                if (!this.updateById(goods)) {
+                    throw new IllegalStateException("更新商品下架状态失败，goodsId=" + goods.getGoodsId());
+                }
+
+                if (goods.getUserId() != null && !goods.getUserId().isBlank()) {
+                    String targetUserId = goods.getUserId();
+
+                    // 1) 查找是否已有 system <-> user 的会话（复用）
+                    ChatSession session = chatSessionService.findSessionByUsers("system", targetUserId);
+                    Date now = new Date();
+                    boolean createdSession = false;
+                    if (session == null) {
+                        // 2) 没有则创建新会话
+                        session = new ChatSession();
+                        session.setUser1Id("system");
+                        session.setUser2Id(targetUserId);
+                        session.setStatus(1);
+                        session.setLastTime(now);
+                        chatSessionService.save(session); // 保存后 session.chatId 应被填充
+                        createdSession = true;
+                    } else {
+                        // 3) 确保会话为正常状态并更新 lastTime
+                        if (!Integer.valueOf(1).equals(session.getStatus())) {
+                            session.setStatus(1);
+                        }
+                        session.setLastTime(now);
+                        chatSessionService.updateById(session);
+                    }
+
+                    // 4) 构建并保存系统消息（关联到会话）
+                    ChatMessage message = new ChatMessage();
+                    message.setChatId(session.getChatId());
+                    message.setSendId("system");
+                    message.setReceiveId(targetUserId);
+                    message.setMsgType(0);
+                    message.setMsgContent("您的商品【" + goods.getGoodsName() + "】因【" + trimmedReason + "】被管理员下架，如有异议请联系反馈。");
+                    message.setIsRead(0);
+                    message.setIsDelete(0);
+                    chatMessageMapper.insert(message);
+
+                    // 5) 更新会话的 lastMsg/lastTime（把系统消息作为最后消息）
+                    ChatSession updateSession = new ChatSession();
+                    updateSession.setChatId(session.getChatId());
+                    updateSession.setLastMsg(message.getMsgContent());
+                    updateSession.setLastTime(now);
+                    chatSessionService.updateById(updateSession);
+
+                    // 6) 推送通知（保留原有推送逻辑）
+                    Map<String, Object> payload = new HashMap<>();
+                    payload.put("type", "system");
+                    payload.put("content", message.getMsgContent());
+                    payload.put("goodsId", goods.getGoodsId());
+                    payload.put("createTime", message.getCreateTime());
+                    stompPushService.pushToUserQueue(targetUserId, "/queue/messages", payload);
+                } else {
+                    log.warn("商品巡检驳回时未找到有效发布者，跳过通知：goodsId={}", goods.getGoodsId());
+                }
+            }
+
+            log.info("商品巡检驳回成功：goodsIds={}, count={}, reason={}", ids, goodsList.size(), trimmedReason);
+            return Result.ok("操作成功，已下架相关商品并通知用户", null);
+        } catch (Exception e) {
+            log.error("商品巡检驳回失败：goodsIds={}, reason={}", goodsIds, reason, e);
+            return Result.fail("商品巡检驳回失败，请稍后重试");
+        }
+    }
+
     private String normalizeTab(String tab, String category) {
         if (tab != null && !tab.isBlank()) {
             return tab.trim();
@@ -171,6 +386,41 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
             return category.trim();
         }
         return "recommend";
+    }
+
+    private Integer resolveAuditCategoryId(String category) {
+        String categoryName = AUDIT_CATEGORY_NAME.get(category);
+        if (categoryName == null) {
+            return null;
+        }
+        QueryWrapper<TGoodsCategory> wrapper = new QueryWrapper<>();
+        wrapper.eq("category_name", categoryName).last("LIMIT 1");
+        TGoodsCategory goodsCategory = tGoodsCategoryService.getOne(wrapper);
+        return goodsCategory == null ? null : goodsCategory.getCategoryId();
+    }
+
+    private GoodsAuditListItemDTO buildAuditGoodsListItem(TGoods goods) {
+        GoodsAuditListItemDTO item = new GoodsAuditListItemDTO();
+        item.setId(goods.getGoodsId());
+        item.setName(goods.getGoodsName());
+        item.setRemark(goods.getGoodsNote() == null ? "" : goods.getGoodsNote());
+        item.setPrice(goods.getPrice());
+        item.setImgUrl(getMainImage(goods.getGoodsId()));
+        item.setPublishTime(goods.getCreateTime() == null ? "" : goods.getCreateTime().format(DATE_TIME_FORMATTER));
+        TUser publisher = tUserService.getById(goods.getUserId());
+        item.setPublisherName(publisher == null ? "未知" : publisher.getUserName());
+        item.setPublisherId(goods.getUserId());
+        return item;
+    }
+
+    private List<Long> normalizeGoodsIds(List<Long> goodsIds) {
+        if (goodsIds == null || goodsIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return goodsIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     private Result buildRecommendResult(String currentUserId, int page, int size) {
