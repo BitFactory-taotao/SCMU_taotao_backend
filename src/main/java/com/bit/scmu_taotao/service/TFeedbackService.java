@@ -2,10 +2,13 @@ package com.bit.scmu_taotao.service;
 
 import com.bit.scmu_taotao.dto.FeedbackDto.FeedbackPageRequest;
 import com.bit.scmu_taotao.dto.FeedbackDto.FeedbackSubmitRequest;
+import com.bit.scmu_taotao.dto.admin.AdminFeedbackPageRequest;
 import com.bit.scmu_taotao.entity.TFeedback;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.bit.scmu_taotao.util.common.Result;
 import jakarta.validation.Valid;
+
+import java.util.List;
 
 /**
 * @author 35314
@@ -16,4 +19,13 @@ public interface TFeedbackService extends IService<TFeedback> {
     Result submitFeedback(@Valid FeedbackSubmitRequest request);
 
     Result getFeedbackList(FeedbackPageRequest query);
+
+    // Admin methods
+    Result getAdminFeedbackList(AdminFeedbackPageRequest query);
+
+    Result getFeedbackDetail(Long feedbackId);
+
+    Result markUnread(List<Long> feedbackIds);
+
+    Result resolveFeedback(Long feedbackId, String replyContent);
 }

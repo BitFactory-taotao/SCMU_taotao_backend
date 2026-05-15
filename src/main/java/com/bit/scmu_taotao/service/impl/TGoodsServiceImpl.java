@@ -245,7 +245,8 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
             detail.setImgUrls(getGoodsImageUrls(goodsId.intValue()));
             detail.setPublishTime(goods.getCreateTime() == null ? null : goods.getCreateTime().format(DATE_TIME_FORMATTER));
             detail.setPublisher(tUserService.getPublisherInfo(goods.getUserId()));
-            detail.setType(goods.getGoodsType() != null && goods.getGoodsType() == 1 ? "sell" : "buy");
+            // goodsType: 1=出售, 2=预购；null 兜底为 sell
+            detail.setType(goods.getGoodsType() != null && goods.getGoodsType() == 2 ? "buy" : "sell");
 
             log.info("商品巡检详情查询成功：goodsId={}", goodsId);
             return Result.ok("请求成功", detail);
@@ -271,8 +272,19 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
                 return Result.fail(404, "商品不存在");
             }
 
+            // 前置校验：只允许审核状态为"待巡检"（isAudited==0 或 null）的商品
+            List<Long> invalidIds = goodsList.stream()
+                    .filter(g -> g.getIsAudited() != null && g.getIsAudited() != 0)
+                    .map(TGoods::getGoodsId)
+                    .collect(Collectors.toList());
+            if (!invalidIds.isEmpty()) {
+                log.warn("商品巡检通过前置校验失败：以下商品不在待巡检状态 ids={}", invalidIds);
+                return Result.fail(400, "以下商品不在待巡检状态，无法审核通过: " + invalidIds);
+            }
+
             for (TGoods goods : goodsList) {
                 goods.setIsAudited(1);
+                goods.setGoodsStatus(0); // 审核通过后设为在线状态
                 goods.setRejectReason(null);
                 if (!this.updateById(goods)) {
                     throw new IllegalStateException("更新商品审核状态失败，goodsId=" + goods.getGoodsId());
@@ -305,6 +317,16 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
                     .eq(TGoods::getIsDelete, 0));
             if (goodsList.isEmpty()) {
                 return Result.fail(404, "商品不存在");
+            }
+
+            // 前置校验：只允许审核状态为"待巡检"（isAudited==0 或 null）的商品
+            List<Long> invalidIds2 = goodsList.stream()
+                    .filter(g -> g.getIsAudited() != null && g.getIsAudited() != 0)
+                    .map(TGoods::getGoodsId)
+                    .collect(Collectors.toList());
+            if (!invalidIds2.isEmpty()) {
+                log.warn("商品巡检驳回前置校验失败：以下商品不在待巡检状态 ids={}", invalidIds2);
+                return Result.fail(400, "以下商品不在待巡检状态，无法驳回: " + invalidIds2);
             }
 
             for (TGoods goods : goodsList) {

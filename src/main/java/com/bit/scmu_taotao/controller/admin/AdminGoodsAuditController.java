@@ -10,14 +10,12 @@ import jakarta.validation.constraints.Min;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.BindingResult;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 /**
  * 商品巡检审核接口
  */
 @Slf4j
-@Validated
 @RestController
 @RequestMapping("admin/goods/audit")
 public class AdminGoodsAuditController {
