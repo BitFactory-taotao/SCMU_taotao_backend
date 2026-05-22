@@ -49,6 +49,9 @@ class UserControllerTest {
     @Autowired
     private TEvaluateService tEvaluateService;
 
+    @Autowired
+    private TUserReportService tUserReportService;
+
     private static final String TEST_PREFIX = "ut_user_controller";
     private static final String TEST_USER_ID = TEST_PREFIX + "_buyer";
     private static final String TEST_CATEGORY = TEST_PREFIX + "_category";
@@ -77,6 +80,12 @@ class UserControllerTest {
 
         tFavoriteService.remove(new LambdaQueryWrapper<TFavorite>()
                 .eq(TFavorite::getUserId, TEST_USER_ID));
+
+        tUserReportService.remove(new LambdaQueryWrapper<TUserReport>()
+                .eq(TUserReport::getReporterId, TEST_USER_ID)
+                .or().eq(TUserReport::getTargetId, TEST_USER_ID)
+                .or().likeRight(TUserReport::getReporterId, TEST_PREFIX + "_")
+                .or().likeRight(TUserReport::getTargetId, TEST_PREFIX + "_"));
 
         tGoodsService.remove(new LambdaQueryWrapper<TGoods>()
                 .eq(TGoods::getUserId, TEST_USER_ID)
@@ -437,9 +446,150 @@ class UserControllerTest {
         return (Map<String, Object>) result.getData();
     }
 
-    @SuppressWarnings("unchecked")
+     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> extractList(Result result) {
         Object list = okData(result).get("list");
         return list == null ? List.of() : (List<Map<String, Object>>) list;
+    }
+
+    // ======================== reportUser 举报测试 ========================
+
+    @Test
+    @DisplayName("reportUser: 正常举报含图片")
+    void testReportUserWithImages() {
+        String targetUserId = TEST_PREFIX + "_target_1";
+        ensureUser(targetUserId, "被举报用户");
+
+        com.bit.scmu_taotao.dto.UserReportRequest request = new com.bit.scmu_taotao.dto.UserReportRequest();
+        request.setCategory("GOODS_VIOLATION");
+        request.setContent("此用户发布违法商品");
+        request.setImgUrls(List.of("https://example.com/img1.jpg", "https://example.com/img2.jpg"));
+
+        Result result = tUserReportService.reportUser(targetUserId, request);
+        assertEquals(200, result.getCode());
+        assertTrue(result.getMsg().contains("成功"));
+
+        TUserReport saved = tUserReportService.getOne(new LambdaQueryWrapper<TUserReport>()
+                .eq(TUserReport::getReporterId, TEST_USER_ID)
+                .eq(TUserReport::getTargetId, targetUserId));
+        assertNotNull(saved);
+        assertEquals("GOODS_VIOLATION", saved.getTag());
+        assertEquals("此用户发布违法商品", saved.getContent());
+        assertEquals(0, saved.getStatus());
+        assertTrue(saved.getImgUrls().contains("https://example.com/img1.jpg"));
+    }
+
+    @Test
+    @DisplayName("reportUser: 正常举报无图片")
+    void testReportUserWithoutImages() {
+        String targetUserId = TEST_PREFIX + "_target_2";
+        ensureUser(targetUserId, "被举报用户2");
+
+        com.bit.scmu_taotao.dto.UserReportRequest request = new com.bit.scmu_taotao.dto.UserReportRequest();
+        request.setCategory("LOW_CREDIT");
+        request.setContent("用户诚信度低");
+        request.setImgUrls(null);
+
+        Result result = tUserReportService.reportUser(targetUserId, request);
+        assertEquals(200, result.getCode());
+
+        TUserReport saved = tUserReportService.getOne(new LambdaQueryWrapper<TUserReport>()
+                .eq(TUserReport::getReporterId, TEST_USER_ID)
+                .eq(TUserReport::getTargetId, targetUserId));
+        assertNotNull(saved);
+        assertNull(saved.getImgUrls());
+    }
+
+    @Test
+    @DisplayName("reportUser: 举报自己")
+    void testReportUserSelf() {
+        com.bit.scmu_taotao.dto.UserReportRequest request = new com.bit.scmu_taotao.dto.UserReportRequest();
+        request.setCategory("LOW_CREDIT");
+        request.setContent("举报自己");
+        request.setImgUrls(null);
+
+        Result result = tUserReportService.reportUser(TEST_USER_ID, request);
+        assertEquals(400, result.getCode());
+        assertTrue(result.getMsg().contains("不能举报自己"));
+    }
+
+    @Test
+    @DisplayName("reportUser: 24小时内重复举报同一用户")
+    void testReportUserDuplicate24h() {
+        String targetUserId = TEST_PREFIX + "_target_3";
+        ensureUser(targetUserId, "被举报用户3");
+
+        com.bit.scmu_taotao.dto.UserReportRequest request = new com.bit.scmu_taotao.dto.UserReportRequest();
+        request.setCategory("LANG_VIOLATION");
+        request.setContent("用户言论不当");
+        request.setImgUrls(null);
+
+        // 第一次举报
+        Result result1 = tUserReportService.reportUser(targetUserId, request);
+        assertEquals(200, result1.getCode());
+
+        // 24小时内重复举报
+        Result result2 = tUserReportService.reportUser(targetUserId, request);
+        assertEquals(400, result2.getCode());
+        assertTrue(result2.getMsg().contains("24小时内"));
+    }
+
+
+    @Test
+    @DisplayName("reportUser: 被举报用户不存在")
+    void testReportUserTargetNotExists() {
+        String nonExistentUserId = TEST_PREFIX + "_non_existent";
+
+        com.bit.scmu_taotao.dto.UserReportRequest request = new com.bit.scmu_taotao.dto.UserReportRequest();
+        request.setCategory("LOW_CREDIT");
+        request.setContent("用户不存在时举报");
+        request.setImgUrls(null);
+
+        Result result = tUserReportService.reportUser(nonExistentUserId, request);
+        assertEquals(404, result.getCode());
+        assertTrue(result.getMsg().contains("用户不存在"));
+    }
+
+    @Test
+    @DisplayName("reportUser: 未登录")
+    void testReportUserNotLoggedIn() {
+        String targetUserId = TEST_PREFIX + "_target_7";
+        ensureUser(targetUserId, "被举报用户7");
+
+        // 清除用户上下文模拟未登录
+        UserContext.remove();
+
+        com.bit.scmu_taotao.dto.UserReportRequest request = new com.bit.scmu_taotao.dto.UserReportRequest();
+        request.setCategory("LOW_CREDIT");
+        request.setContent("未登录举报");
+        request.setImgUrls(null);
+
+        Result result = tUserReportService.reportUser(targetUserId, request);
+        assertEquals(401, result.getCode());
+        assertTrue(result.getMsg().contains("未登录"));
+    }
+
+    @Test
+    @DisplayName("reportUser: 正常举报空列表")
+    void testReportUserEmptyImageList() {
+        String targetUserId = TEST_PREFIX + "_target_8";
+        ensureUser(targetUserId, "被举报用户8");
+
+        // 重新设置用户上下文（上一个测试移除了）
+        UserContext.setUserId(TEST_USER_ID);
+
+        com.bit.scmu_taotao.dto.UserReportRequest request = new com.bit.scmu_taotao.dto.UserReportRequest();
+        request.setCategory("OTHER");
+        request.setContent("举报内容");
+        request.setImgUrls(List.of());  // 空列表
+
+        Result result = tUserReportService.reportUser(targetUserId, request);
+        assertEquals(200, result.getCode());
+
+        TUserReport saved = tUserReportService.getOne(new LambdaQueryWrapper<TUserReport>()
+                .eq(TUserReport::getReporterId, TEST_USER_ID)
+                .eq(TUserReport::getTargetId, targetUserId));
+        assertNotNull(saved);
+        assertNull(saved.getImgUrls());
     }
 }

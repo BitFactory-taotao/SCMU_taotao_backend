@@ -326,8 +326,13 @@ public class TFeedbackServiceImpl extends ServiceImpl<TFeedbackMapper, TFeedback
                 payload.put("content", message.getMsgContent());
                 payload.put("feedbackId", feedbackId);
                 payload.put("createTime", message.getCreateTime());
-                stompPushService.pushToUserQueue(targetUserId, "/queue/messages", payload);
-                log.info("反馈处理成功并已通知用户：feedbackId={}, userId={}", feedbackId, targetUserId);
+                try {
+                    stompPushService.pushToUserQueue(targetUserId, "/queue/messages", payload);
+                    log.info("反馈处理成功并已通知用户：feedbackId={}, userId={}", feedbackId, targetUserId);
+                } catch (Exception e) {
+                    log.warn("反馈已处理但实时推送失败（消息已入库，用户下次登录可见）：feedbackId={}, userId={}, error={}",
+                            feedbackId, targetUserId, e.getMessage());
+                }
             } else {
                 log.warn("反馈处理成功但未找到有效反馈提交者，跳过通知：feedbackId={}", feedbackId);
             }

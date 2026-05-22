@@ -1,6 +1,8 @@
 package com.bit.scmu_taotao.controller;
 
 import com.bit.scmu_taotao.dto.GoodsEditRequest;
+import com.bit.scmu_taotao.dto.UserReportRequest;
+import com.bit.scmu_taotao.service.TUserReportService;
 import com.bit.scmu_taotao.service.TUserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +19,8 @@ import lombok.extern.slf4j.Slf4j;
 public class UserController {
     @Autowired
     private TUserService tUserService;
+    @Autowired
+    private TUserReportService tUserReportService;
 
     /**
      * 获取用户信息接口
@@ -132,5 +136,22 @@ public class UserController {
         }
         log.info("获取用户主页信息：userId={}", userId);
         return tUserService.getUserHomeInfo(userId);
+    }
+
+    /**
+     * 举报用户
+     *
+     * @param userId 目标用户ID
+     * @param request 举报请求参数
+     * @return 举报提交结果
+     */
+    @PostMapping("/{userId}/report")
+    public Result reportUser(@PathVariable String userId,
+                             @Valid @RequestBody UserReportRequest request) {
+        if (userId == null || userId.trim().isEmpty()) {
+            return Result.fail(400, "用户ID不能为空");
+        }
+        log.info("收到用户举报请求：targetId={}, category={}", userId, request.getCategory());
+        return tUserReportService.reportUser(userId, request);
     }
 }
