@@ -1,4 +1,4 @@
-﻿# AGENTS.md — SCMU_taotao 项目 AI 编码助手指令
+# AGENTS.md — SCMU_taotao 项目 AI 编码助手指令
 
 ## 1. Project Overview（项目简介）
 
@@ -349,3 +349,157 @@ src/test/java/com/bit/scmu_taotao/
 
 - **禁止新增 Maven 依赖**（`pom.xml` 中 `<dependency>`）
 - **禁止新增 Gradle 依赖**（项目不使用 Gradle）
+
+
+---
+
+## 9. Architecture Context（AI 架构上下文）
+
+> **本节面向 AI 助手，用于快速建立对项目结构和运行时依赖关系的全局理解。**
+> 每次新增业务模块或对现有模块进行大规模改动时，**必须同步更新本节和 CodeGraph 索引**（``codegraph init -i``）。
+
+### 9.1 数据库实体关系
+
+**17 张表，按业务域分组（所有实体均软删除 ``is_delete``）：**
+
+#### 用户域
+- ``t_user``(userId/String/学号) → TUser：userName, avatar, creditScore, creditStar, status
+- ``t_admin``(id/Long) → TAdmin：adminId, password, nickname
+- ``t_credit_log``(id/Long) → TCreditLog：userId → TUser, scoreChange, changeType
+
+#### 商品域
+- ``t_goods``(goodsId/Long) → TGoods：userId → TUser, categoryId → TGoodsCategory, goodsType(0普通/1预售), price, goodsStatus(0在售/1已售), viewCount, isAudited
+- ``t_goods_category``(categoryId/Int) → TGoodsCategory：categoryName, sort, isShow
+- ``t_goods_image``(imageId/Long) → TGoodsImage：goodsId → TGoods, imageUrl, sort
+
+#### 交易域
+- ``t_trade``(tradeId/Long) → TTrade：goodsId → TGoods, sellerId/buyerId → TUser, tradePrice
+- ``t_evaluate``(evalId/Long) → TEvaluate：tradeId → TTrade, goodsId, buyerId, sellerId, descScore/commScore/totalScore
+- ``t_evaluate_image``(evalImgId/Long) → TEvaluateImage：evalId → TEvaluate, imgUrl
+
+#### 互动域
+- ``t_favorite``(favoriteId/Long) → TFavorite：userId, goodsId
+- ``t_blacklist``(blackId/Long) → TBlacklist：userId, blackUserId
+- ``t_feedback``(feedbackId/Long) → TFeedback：userId, feedbackContent, feedbackStatus, replyContent
+- ``t_user_report``(id/Long) → TUserReport：reporterId, targetId, tag, status
+
+#### 即时通讯域
+- ``chat_session``(chatId/Long) → ChatSession：user1Id, user2Id, lastMsg, lastTime, status
+- ``chat_message``(msgId/Long) → ChatMessage：chatId → ChatSession, sendId/receiveId, tradeId → TTrade, msgType(0系统/1通知/2沟通), contentType(TEXT/IMAGE/AUDIO), mediaUrl, isRead
+
+#### 推荐系统域
+- ``recommendation_config``(configId/Int) → RecommendationConfig：configKey, configValue(BigDecimal) — 存储推荐权重，可动态调整
+- ``user_goods_browse``(id/Long) → UserGoodsBrowse：userId, goodsId, browseTime — 浏览记录，每日凌晨清理 30 天前数据
+
+### 9.2 实体外键关系图
+
+```
+TUser ──1:N──> TGoods(发布)           TUser ──1:N──> TFavorite(收藏)
+TUser ──1:N──> TBlacklist(拉黑)       TUser ──1:N──> TFeedback(反馈)
+TUser ──1:N──> TCreditLog(信用变更)   TUser ──1:N──> UserGoodsBrowse(浏览)
+TUser ──1:N──> TUserReport(举报)
+
+TGoods ──1:N──> TGoodsImage(图片)     TGoods ──N:1──> TGoodsCategory(分类)
+TGoods ──1:1──> TTrade(交易)
+
+ChatSession ──1:N──> ChatMessage(消息)  ChatMessage ──N:1──> TTrade(关联交易)
+TTrade ──1:N──> TEvaluate(评价)         TEvaluate ──1:N──> TEvaluateImage(评价图)
+```
+
+### 9.3 Service 依赖关系
+
+```
+商品: TGoodsService → TGoodsMapper, TGoodsImageService, TGoodsCategoryService,
+      SensitiveWordService, UserGoodsBrowseService, TFavoriteService
+      ImageUploadService → ObjectStorageService(S3ObjectStorageImpl)
+
+用户: TUserService → TUserMapper, TFavoriteService, TGoodsService, TTradeService, TokenUtil
+      TAdminService → TokenUtil → RedisService
+      LoginController → TUserService, WebVpnLoginThread(Apache HttpClient)
+
+消息: ChatSessionService → ChatSessionMapper, ChatMessageService, TGoodsService,
+      TTradeService, StompPushService, RedisService(交易意图锁)
+      ChatMessageService → ChatMessageMapper, StompPushService, ObjectStorageService(媒体)
+
+推荐: RecommendationService → TGoodsMapper, UserGoodsBrowseMapper, RedisService(缓存),
+      RecommendationConfigService(权重)
+      RecommendationScheduleService → @ApplicationReady预热, @Scheduled每小时刷新, 每日清理
+
+管理: AdminGoodsAuditController → TGoodsService → TUserService(通知被下架用户)
+      AdminFeedbackController → TFeedbackService
+      AdminAuthController → TAdminService
+      AdminReportController → TUserReportService, TUserService, TCreditLogService
+      TUserReportService → ChatSessionService, ChatMessageMapper, StompPushService(系统消息推送)
+```
+
+### 9.4 认证与拦截链
+
+```
+请求 → LoginInterceptor.preHandle()
+  OPTIONS → 放行
+  公共 GET(/goods, /goods/search, /goods/{id}, /user/{id}/home) → 放行(可选注入UserContext)
+  /ws/** → 放行(交给WebSocket拦截器)
+  /test-only/auth/** → 放行(仅test profile)
+  /login, /admin/login, /error, /static/** → 放行
+  其他 → 校验Authorization Token
+    有效 → UserContext.setUserId(finalId)
+    无效 → 401 JSON
+
+Token: Redis双向映射(token↔userId), 2小时过期, 校验时自动续期
+管理员Token值带"ADMIN:"前缀, 拦截器区分学生/管理员权限
+请求结束 → afterCompletion → UserContext.remove() 清理ThreadLocal
+
+WebSocket握手链:
+  /ws/messages → WebSocketAuthHandshakeInterceptor(Token校验, 注入userId到attributes)
+    → WebSocketPrincipalHandshakeHandler(userId包装为Principal, 供STOMP /user/路由)
+```
+
+### 9.5 全局配置要点
+
+- **Context Path**: ``/api/v1/campus-taotao``
+- **Redis序列化**: ``GenericJackson2JsonRedisSerializer`` + ``DefaultTyping.NON_FINAL`` + ``JavaTimeModule``
+- **Redis用途**: Token存储、热门商品缓存(``recommendation:hot_goods_cache``)、交易意图锁(``trade:req:``前缀, 48h过期)
+- **MyBatis-Plus自动填充**: ``MyBatisPlusConfig``(MetaObjectHandler) → INSERT时填createTime/updateTime/createdAt, UPDATE时填updateTime
+- **S3存储**: ``S3ClientConfig``→AWS SDK v2 S3Client→阿里云OSS; 密钥```${ALI_ACCESS_KEY}```/```${ALI_SECRET_KEY}```; 上传路径``user/{userId}/{yyyy}/{MM}/{dd}/{uuid}.{ext}``
+- **跨域**: ``CorsConfig`` 全局放行``*``, 允许Cookie
+- **定时任务**(@EnableScheduling, 线程池2): 每日02:00清理浏览记录, 每小时:05刷新热门缓存, 启动时预热
+- **敏感词**: ``goods.sensitive-words``配置, 发布商品时校验
+- **Test Profile**: ``/test-only/auth/token`` + ``X-Test-Secret`` Header签发临时Token
+- **全局异常**: ``GlobalExceptionHandler``(@RestControllerAdvice) 统一处理StorageException/SensitiveWord/Validation/STOMP异常等
+
+### 9.6 推荐系统架构
+
+双轨策略:
+1. **个性化**(有浏览记录): Top2偏好分类 → 加权公式(分类偏好30 + 收藏20 + 点击量25 + 发布时效25), 权重从recommendation_config表读取, 排除黑名单
+2. **冷启动**(匿名/新用户): 热门Top50(点击量×0.15 + 收藏数×20 + 发布时效×0.8), Redis缓存每小时刷新
+
+浏览记录写入: 用户查看商品详情时 → ``user_goods_browse``
+
+### 9.7 Controller 路由速查
+
+| 路径 | Controller | 认证 |
+|------|-----------|------|
+| ``/login`` | LoginController | 无(WebVPN登录) |
+| ``/goods`` | GoodsController | GET列表/搜索/详情无需; 发布/编辑需认证 |
+| ``/recommend`` | RecommendationController | 可选(匿名支持冷启动) |
+| ``/messages``(REST) | MessagesRestController | 需认证 |
+| ``/app/messages/*``(STOMP) | MessagesController | WebSocket握手认证 |
+| ``/trade/*`` | TradeController | 需认证 |
+| ``/favorites`` | GoodsController | 需认证 |
+| ``/blacklist`` | TBlacklistController | 需认证 |
+| ``/evaluate`` | TEvaluateController | 需认证 |
+| ``/feedback`` | TFeedbackController | 需认证 |
+| ``/user`` | UserController | 需认证 |
+| ``/user/{id}/home`` | UserController | 无需(公开主页) |
+| ``/file`` | FileUploadController | 需认证 |
+| ``/admin/login,logout,profile`` | AdminAuthController | 管理员Token |
+| ``/admin/goods/audit/*`` | AdminGoodsAuditController | 管理员Token |
+| ``/admin/feedback/*`` | AdminFeedbackController | 管理员Token |
+| ``/admin/reports`` | AdminReportController | 管理员Token |
+| ``/test-only/auth/token`` | TestAuthController | test profile + X-Test-Secret |
+
+### 9.8 维护说明
+
+> **当新增业务模块或对现有模块进行大规模改动时，必须：**
+> 1. 运行 ``codegraph init -i`` 重建 CodeGraph 索引
+> 2. 更新本节（§9）中的实体关系、Service 依赖、Controller 路由等对应段落
