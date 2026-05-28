@@ -208,7 +208,7 @@ public class TUserReportServiceImpl extends ServiceImpl<TUserReportMapper, TUser
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Result verifyReport(Long reportId, AdminReportVerifyRequest request) {
         TUserReport report = this.getById(reportId);
         if (report == null) {
@@ -236,6 +236,15 @@ public class TUserReportServiceImpl extends ServiceImpl<TUserReportMapper, TUser
             int newScore = Math.max(0, targetUser.getCreditScore() - request.getDeductScore());
             targetUser.setCreditScore(newScore);
             tUserService.updateById(targetUser);
+
+            // 信誉分低于70，自动标记为风险待审核
+            if (newScore < 70 && !Integer.valueOf(2).equals(targetUser.getStatus())) {
+                targetUser.setStatus(2);
+                tUserService.updateById(targetUser);
+                log.info("用户信誉分低于70，自动标记为风险账号：userId={}, creditScore={}", report.getTargetId(), newScore);
+                String warningMsg = "您的账号信誉分已低于70，已被标记为风险账号，请注意规范行为，避免进一步扣分导致账号冻结。";
+                sendSystemMessage(report.getTargetId(), warningMsg);
+            }
 
             // 记录信用流水
             TCreditLog creditLog = new TCreditLog();

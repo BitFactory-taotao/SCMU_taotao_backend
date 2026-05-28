@@ -393,12 +393,60 @@ class AdminReportControllerTest {
             Map<String, Object> data = (Map<String, Object>) result.getData();
             assertEquals(0, ((Number) data.get("newCreditScore")).intValue());
 
-            TUser updated = userService.getById(TARGET);
+                        TUser updated = userService.getById(TARGET);
             assertEquals(0, updated.getCreditScore());
         }
-    }
 
-    // ======================== 处理举报（REJECT） ========================
+        @Test
+        @DisplayName("PASS 扣分后信用分低于70自动标记为风险账号（status=2）")
+        void verifyPassAutoFlagRiskWhenScoreBelow70() {
+            // 将被举报人信用分设为 75
+            TUser target = userService.getById(TARGET);
+            target.setCreditScore(75);
+            target.setStatus(0);
+            userService.updateById(target);
+
+            Long reportId = insertPendingReport("GOODS_VIOLATION", "商品违规");
+
+            AdminReportVerifyRequest req = new AdminReportVerifyRequest();
+            req.setAction("PASS");
+            req.setDeductScore(10); // 75 - 10 = 65 < 70
+
+            Result result = controller.verify(reportId, req, bind(req));
+            assertEquals(200, result.getCode());
+
+            // 验证信用分已扣除
+            TUser updatedUser = userService.getById(TARGET);
+            assertEquals(65, updatedUser.getCreditScore());
+            // 验证自动标记为风险账号
+            assertEquals(2, updatedUser.getStatus());
+        }
+
+        @Test
+        @DisplayName("PASS 扣分后信用分仍 >= 70 不改变 status")
+        void verifyPassNoAutoFlagWhenScoreAbove70() {
+            // 将被举报人信用分设为 80
+            TUser target = userService.getById(TARGET);
+            target.setCreditScore(80);
+            target.setStatus(0);
+            userService.updateById(target);
+
+            Long reportId = insertPendingReport("GOODS_VIOLATION", "商品违规");
+
+            AdminReportVerifyRequest req = new AdminReportVerifyRequest();
+            req.setAction("PASS");
+            req.setDeductScore(5); // 80 - 5 = 75 >= 70
+
+            Result result = controller.verify(reportId, req, bind(req));
+            assertEquals(200, result.getCode());
+
+            // 验证信用分已扣除
+            TUser updatedUser = userService.getById(TARGET);
+            assertEquals(75, updatedUser.getCreditScore());
+            // 验证 status 保持不变
+            assertEquals(0, updatedUser.getStatus());
+        }
+    }// ======================== 处理举报（REJECT） ========================
 
     @Nested
     @DisplayName("PUT /admin/reports/{reportId}/verify — REJECT（驳回）")
@@ -637,4 +685,6 @@ class AdminReportControllerTest {
         }
     }
 }
+
+
 
