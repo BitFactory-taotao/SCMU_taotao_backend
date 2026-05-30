@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -60,5 +61,23 @@ public class RedisService {
 
     public Set<String> keys(String pattern) {
         return redisTemplate.keys(pattern);
+    }
+
+    /**
+     * 获取 Hash 中所有字段和值
+     * @param key Hash 键
+     * @return 字段-值映射
+     */
+    public Map<Object, Object> hGetAll(String key) {
+        return redisTemplate.opsForHash().entries(key);
+    }
+
+    /**
+     * 批量设置 Hash 字段
+     * @param key Hash 键
+     * @param map 字段-值映射
+     */
+    public void hPutAll(String key, Map<?, ?> map) {
+        redisTemplate.opsForHash().putAll(key, map);
     }
 }
