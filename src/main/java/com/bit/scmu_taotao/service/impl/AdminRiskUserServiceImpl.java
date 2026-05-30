@@ -10,6 +10,7 @@ import com.bit.scmu_taotao.dto.admin.RiskUserListItemDTO;
 import com.bit.scmu_taotao.dto.admin.RiskUserPageRequest;
 import com.bit.scmu_taotao.entity.*;
 import com.bit.scmu_taotao.mapper.ChatMessageMapper;
+import com.bit.scmu_taotao.mapper.TAccountAuditLogMapper;
 import com.bit.scmu_taotao.mapper.TUserMapper;
 import com.bit.scmu_taotao.service.*;
 import com.bit.scmu_taotao.util.common.Result;
@@ -20,9 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.util.StringUtils;
 
-import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -64,6 +63,9 @@ public class AdminRiskUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
 
     @Autowired
     private StompPushService stompPushService;
+
+    @Autowired
+    private TAccountAuditLogMapper tAccountAuditLogMapper;
 
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -221,9 +223,20 @@ public class AdminRiskUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
                             .set(TUser::getCreditScore, newScore)
                             .set(TUser::getViolationReason, null));
                 }
-                    creditLogService.save(creditLog);
-                    sendSystemMessage(userId, messageContent);
-                    successCount++;
+
+                creditLogService.save(creditLog);
+
+                // 记录账号审核操作日志
+                TAccountAuditLog auditLog = new TAccountAuditLog();
+                auditLog.setUserId(userId);
+                auditLog.setAction("BAN".equals(action) ? "ban" : "clear");
+                auditLog.setPreviousStatus(targetUser.getStatus());
+                auditLog.setReason(reason);
+                auditLog.setIsDelete(0);
+                tAccountAuditLogMapper.insert(auditLog);
+
+                sendSystemMessage(userId, messageContent);
+                successCount++;
             }
 
             return Result.ok("操作成功 " + successCount + " 条数据");

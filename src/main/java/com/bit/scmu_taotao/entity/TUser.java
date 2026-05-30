@@ -41,7 +41,7 @@ public class TUser {
      */
     private BigDecimal creditStar;
 
-    // 用户状态: 0正常(normal), 1违规(violation)
+    // 用户状态: 0正常(normal), 1违规(violation), 2风险(risk)
     private Integer status;
 
     // 违规原因

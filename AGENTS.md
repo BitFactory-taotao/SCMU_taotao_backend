@@ -37,6 +37,8 @@
 - **推荐系统**：个性化推荐 + 冷启动热门推荐，基于分类偏好/收藏/点击/时效的加权评分
 - **敏感词过滤**：商品发布时校验
 - **图片上传**：S3 协议对接阿里云 OSS
+- **风险账号审核**：信用分 < 70 自动标记、多维风险指标、查封/消除操作
+- **解决事项总台**：聚合商品审核/反馈/账号审核已处理记录的查阅、详情和撤销
 
 ---
 
@@ -360,10 +362,10 @@ src/test/java/com/bit/scmu_taotao/
 
 ### 9.1 数据库实体关系
 
-**17 张表，按业务域分组（所有实体均软删除 ``is_delete``）：**
+**18 张表，按业务域分组（所有实体均软删除 ``is_delete``）：**
 
 #### 用户域
-- ``t_user``(userId/String/学号) → TUser：userName, avatar, creditScore, creditStar, status
+- ``t_user``(userId/String/学号) → TUser：userName, avatar, creditScore, creditStar, status(0=正常/1=违规查封/2=有风险需审核), violationReason
 - ``t_admin``(id/Long) → TAdmin：adminId, password, nickname
 - ``t_credit_log``(id/Long) → TCreditLog：userId → TUser, scoreChange, changeType
 
@@ -376,6 +378,9 @@ src/test/java/com/bit/scmu_taotao/
 - ``t_trade``(tradeId/Long) → TTrade：goodsId → TGoods, sellerId/buyerId → TUser, tradePrice
 - ``t_evaluate``(evalId/Long) → TEvaluate：tradeId → TTrade, goodsId, buyerId, sellerId, descScore/commScore/totalScore
 - ``t_evaluate_image``(evalImgId/Long) → TEvaluateImage：evalId → TEvaluate, imgUrl
+
+#### 管理审计域
+- `t_account_audit_log`(id/Long) → TAccountAuditLog：userId → TUser, action(ban/clear), previousStatus, reason
 
 #### 互动域
 - ``t_favorite``(favoriteId/Long) → TFavorite：userId, goodsId
@@ -398,6 +403,7 @@ TUser ──1:N──> TGoods(发布)           TUser ──1:N──> TFavorite
 TUser ──1:N──> TBlacklist(拉黑)       TUser ──1:N──> TFeedback(反馈)
 TUser ──1:N──> TCreditLog(信用变更)   TUser ──1:N──> UserGoodsBrowse(浏览)
 TUser ──1:N──> TUserReport(举报)
+TUser ──1:N──> TAccountAuditLog(账号审核操作)
 
 TGoods ──1:N──> TGoodsImage(图片)     TGoods ──N:1──> TGoodsCategory(分类)
 TGoods ──1:1──> TTrade(交易)
@@ -430,6 +436,15 @@ TTrade ──1:N──> TEvaluate(评价)         TEvaluate ──1:N──> TEv
       AdminAuthController → TAdminService
       AdminReportController → TUserReportService, TUserService, TCreditLogService
       TUserReportService → ChatSessionService, ChatMessageMapper, StompPushService(系统消息推送)
+
+风险: AdminRiskUserService → TUserService, TUserReportService, TGoodsService, TBlacklistService,
+      TEvaluateService, TCreditLogService, ChatSessionService, ChatMessageMapper, StompPushService
+      TAccountAuditLogMapper(审计日志)
+      信用分<70自动标记: TUserReportServiceImpl.verifyReport() → 检查newScore<70 → status=2
+
+解决事项: AdminSolvedItemsService → TGoodsService, TGoodsImageService, TUserService,
+      TFeedbackService, TUserReportService, TAccountAuditLogMapper, TGoodsMapper, TFeedbackMapper
+      AdminSolvedItemsController → AdminSolvedItemsService (聚合商品审核/反馈/账号审核已处理记录)
 ```
 
 ### 9.4 认证与拦截链
@@ -496,6 +511,13 @@ WebSocket握手链:
 | ``/admin/goods/audit/*`` | AdminGoodsAuditController | 管理员Token |
 | ``/admin/feedback/*`` | AdminFeedbackController | 管理员Token |
 | ``/admin/reports`` | AdminReportController | 管理员Token |
+| ``/admin/users/risk/list`` | AdminRiskUserController | 管理员Token |
+| ``/admin/users/risk/{userId}/metrics`` | AdminRiskUserController | 管理员Token |
+| ``/admin/users/risk/handle`` | AdminRiskUserController | 管理员Token |
+| `/admin/solved-items/list` | AdminSolvedItemsController | 管理员Token |
+| `/admin/solved-items/detail` | AdminSolvedItemsController | 管理员Token |
+| `/admin/solved-items/count` | AdminSolvedItemsController | 管理员Token |
+| `/admin/solved-items/revoke` | AdminSolvedItemsController | 管理员Token |
 | ``/test-only/auth/token`` | TestAuthController | test profile + X-Test-Secret |
 
 ### 9.8 维护说明
@@ -503,3 +525,5 @@ WebSocket握手链:
 > **当新增业务模块或对现有模块进行大规模改动时，必须：**
 > 1. 运行 ``codegraph init -i`` 重建 CodeGraph 索引
 > 2. 更新本节（§9）中的实体关系、Service 依赖、Controller 路由等对应段落
+
+
