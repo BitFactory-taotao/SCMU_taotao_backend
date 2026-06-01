@@ -169,7 +169,7 @@ public class GoodsController {
 
         // 8. 构建响应数据
         java.util.Map<String, Object> data = new java.util.HashMap<>();
-//        data.put("goodsId", goods.getGoodsId());
+        data.put("goodsId", goods.getGoodsId());
         data.put("imgUrls",imgUrls);
 
         // 9. 返回成功响应

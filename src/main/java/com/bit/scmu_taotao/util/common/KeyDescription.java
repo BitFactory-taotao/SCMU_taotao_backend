@@ -6,6 +6,8 @@ import java.time.format.DateTimeFormatter;
 
 @Data
 public class KeyDescription {
+
+    public static final String DEFAULT_AVATAR = "http://localhost:8080/api/v1/campus-taotao/static/images/default-avatar.png";
     public static final String SSFW = "ssfw_";
 
     public static final String LAB = "lab_";

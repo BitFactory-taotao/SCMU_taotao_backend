@@ -119,7 +119,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
                 Map<String, Object> targetUserMap = new HashMap<>();
                 targetUserMap.put("id", targetUserId);
                 targetUserMap.put("name", targetUser == null ? "" : targetUser.getUserName());
-                targetUserMap.put("avatar", targetUser == null ? "" : targetUser.getAvatar());
+                targetUserMap.put("avatar", targetUser == null ? DEFAULT_AVATAR : targetUser.getAvatar());
 
                 Map<String, Object> item = new HashMap<>();
                 item.put("chatId", session.getChatId());

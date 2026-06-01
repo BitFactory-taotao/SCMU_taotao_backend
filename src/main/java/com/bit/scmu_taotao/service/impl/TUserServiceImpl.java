@@ -1,6 +1,5 @@
 package com.bit.scmu_taotao.service.impl;
 
-import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -30,6 +29,8 @@ import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.bit.scmu_taotao.util.common.KeyDescription.DEFAULT_AVATAR;
+
 /**
  * @author 35314
  * @description 针对表【t_user(用户基础信息表)】的数据库操作 Service 实现
@@ -51,6 +52,9 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
 
     @Autowired
     private TGoodsService goodsService;
+
+    @Autowired
+    private SensitiveWordService sensitiveWordService;
 
     @Autowired
     private TGoodsImageService goodsImageService;
@@ -89,6 +93,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
                     user = new TUser();
                     user.setUserId(userId);
                     user.setUserName("演示用户");
+                    user.setAvatar(DEFAULT_AVATAR);
                     user.setCreditScore(100);
                     user.setCreditStar(new BigDecimal("5.0"));
                     user.setCreateTime(java.time.LocalDateTime.now());
@@ -102,6 +107,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
                 Map<String, Object> userInfo = new HashMap<>();
                 userInfo.put("userId", user.getUserId());
                 userInfo.put("name", user.getUserName());
+                userInfo.put("avatar", user.getAvatar() != null ? user.getAvatar() : DEFAULT_AVATAR);
 
                 Map<String, Object> responseData = new HashMap<>();
                 responseData.put("token", token);
@@ -131,6 +137,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
                 user = new TUser();
                 user.setUserId(userId);
                 user.setUserName(realUserName != null ? realUserName : userId);
+                user.setAvatar(DEFAULT_AVATAR);
                 user.setCreditScore(100); // 初始信誉分 100
                 user.setCreditStar(new BigDecimal("5.0")); // 初始信誉星级 5.0
                 user.setCreateTime(java.time.LocalDateTime.now()); // 设置创建时间
@@ -139,6 +146,9 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
                 this.save(user);
                 log.info("新用户注册：userId={}, userName={}", userId, user.getUserName());
             } else {
+                if (user.getAvatar() == null) {
+                    user.setAvatar(DEFAULT_AVATAR);
+                }
                 // 更新用户名（如果发生变化）
                 if (realUserName != null && !realUserName.equals(user.getUserName())) {
                     user.setUserName(realUserName);
@@ -164,6 +174,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             Map<String, Object> userInfo = new HashMap<>();
             userInfo.put("userId", user.getUserId());
             userInfo.put("name", user.getUserName());
+            userInfo.put("avatar", user.getAvatar() != null ? user.getAvatar() : DEFAULT_AVATAR);
 
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("token", token);
@@ -257,7 +268,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             // 构建返回数据
             Map<String, Object> data = new HashMap<>();
             data.put("name", user.getUserName());
-            data.put("avatar", user.getAvatar() != null ? user.getAvatar() : "");
+            data.put("avatar", user.getAvatar() != null ? user.getAvatar() : DEFAULT_AVATAR);
             data.put("studentId", user.getUserId());
             data.put("creditScore", user.getCreditScore() != null ? user.getCreditScore() : 100);
             data.put("creditStar", user.getCreditStar() != null ? user.getCreditStar() : new BigDecimal("5.0"));
@@ -671,7 +682,11 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
                 log.warn("商品状态不允许编辑，goodsId: {}, 状态: {}", goodsId, goods.getGoodsStatus());
                 return Result.fail("该商品状态不允许编辑");
             }
-
+            sensitiveWordService.validateGoods(
+                    request.getName(), request.getDesc(),
+                    request.getRemark(), request.getPurpose(),
+                    request.getExchangeAddr()
+            );
             // 4. 更新商品基本信息
             goods.setGoodsName(request.getName());
             goods.setGoodsDesc(request.getDesc());
@@ -863,6 +878,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             Map<String, Object> userInfo = new HashMap<>();
             userInfo.put("id", targetUser.getUserId());
             userInfo.put("name", targetUser.getUserName());
+            userInfo.put("avatar", targetUser.getAvatar() != null ? targetUser.getAvatar() : DEFAULT_AVATAR);
             userInfo.put("creditScore", targetUser.getCreditScore() != null ? targetUser.getCreditScore() : 100);
             userInfo.put("creditStar", targetUser.getCreditStar() != null ? targetUser.getCreditStar() : new BigDecimal("5.0"));
 
@@ -1041,7 +1057,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         PublisherDTO publisher = new PublisherDTO();
         publisher.setId(user.getUserId());
         publisher.setName(user.getUserName());
-        publisher.setAvatar(user.getAvatar());
+        publisher.setAvatar(user.getAvatar() != null ? user.getAvatar() : DEFAULT_AVATAR);
         publisher.setCreditScore(user.getCreditScore());
         // 将 BigDecimal 转换为 Double
         if (user.getCreditStar() != null) {

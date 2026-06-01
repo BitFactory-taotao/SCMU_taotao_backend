@@ -4,6 +4,7 @@ import com.bit.scmu_taotao.interceptor.LoginInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
@@ -30,5 +31,11 @@ public class WebConfig implements WebMvcConfigurer {
                         "/ws/**",           // WebSocket 握手路径放行，由握手拦截器鉴权
                         "/test-only/auth/**" // test profile 下用于联调的临时发 token 接口
                 );
+    }
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/static/**")
+                .addResourceLocations("classpath:/static/");
     }
 }
