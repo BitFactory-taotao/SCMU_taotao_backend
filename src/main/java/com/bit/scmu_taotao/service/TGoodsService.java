@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -46,4 +47,12 @@ public interface TGoodsService extends IService<TGoods> {
     Result approveAuditGoods(List<Long> goodsIds);
 
     Result rejectAuditGoods(List<Long> goodsIds, String reason);
+
+    /**
+     * Internal API — 增强商品搜索
+     * 支持 keyword + 分类ID + 价格区间的组合搜索，所有条件均为可选
+     */
+    Result searchGoodsInternal(String keyword, Integer categoryId,
+                               BigDecimal minPrice, BigDecimal maxPrice,
+                               Integer page, Integer size);
 }

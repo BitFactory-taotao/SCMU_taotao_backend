@@ -29,7 +29,8 @@ public class WebConfig implements WebMvcConfigurer {
                         "/static/**",       // 静态资源放行
                         "/favicon.ico",     // 图标放行
                         "/ws/**",           // WebSocket 握手路径放行，由握手拦截器鉴权
-                        "/test-only/auth/**" // test profile 下用于联调的临时发 token 接口
+                        "/test-only/auth/**", // test profile 下用于联调的临时发 token 接口
+                        "/internal/**"  // agent 端内部接口放行
                 );
     }
 

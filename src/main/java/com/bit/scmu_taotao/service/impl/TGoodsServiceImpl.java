@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -560,8 +561,75 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
                 .filter(id -> id != null && !id.isBlank())
                 .collect(Collectors.toCollection(HashSet::new));
     }
-}
 
+    @Override
+    public Result searchGoodsInternal(String keyword, Integer categoryId,
+                                      BigDecimal minPrice, BigDecimal maxPrice,
+                                      Integer page, Integer size) {
+        try {
+            int safePage = page == null || page < 1 ? 1 : page;
+            int safeSize = size == null || size < 1 ? 10 : Math.min(size, 50);
+
+            LambdaQueryWrapper<TGoods> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(TGoods::getIsDelete, 0)
+                    .eq(TGoods::getGoodsStatus, 0)
+                    .eq(TGoods::getGoodsType, 1);
+
+            // 关键词模糊搜索
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                String kw = keyword.trim();
+                wrapper.and(w -> w.like(TGoods::getGoodsName, kw)
+                        .or().like(TGoods::getGoodsDesc, kw)
+                        .or().like(TGoods::getGoodsNote, kw)
+                        .or().like(TGoods::getUseScene, kw));
+            }
+
+            // 分类过滤
+            if (categoryId != null) {
+                wrapper.eq(TGoods::getCategoryId, categoryId);
+            }
+
+            // 价格区间
+            if (minPrice != null) {
+                wrapper.ge(TGoods::getPrice, minPrice);
+            }
+            if (maxPrice != null) {
+                wrapper.le(TGoods::getPrice, maxPrice);
+            }
+
+            wrapper.orderByDesc(TGoods::getCreateTime);
+
+            Page<TGoods> goodsPage = this.page(new Page<>(safePage, safeSize), wrapper);
+
+            List<Map<String, Object>> list = goodsPage.getRecords().stream().map(goods -> {
+                Map<String, Object> row = new HashMap<>();
+                row.put("id", goods.getGoodsId());
+                row.put("name", goods.getGoodsName());
+                row.put("remark", goods.getGoodsNote() == null ? "" : goods.getGoodsNote());
+                row.put("price", goods.getPrice());
+                row.put("imgUrl", getMainImage(goods.getGoodsId()));
+                row.put("publishTime", goods.getCreateTime() == null ? "" : goods.getCreateTime().format(DATE_TIME_FORMATTER));
+
+                TUser publisher = tUserService.getById(goods.getUserId());
+                row.put("publisherName", publisher == null ? "未知" : publisher.getUserName());
+                row.put("publisherId", goods.getUserId());
+                return row;
+            }).collect(Collectors.toList());
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("total", goodsPage.getTotal());
+            data.put("pages", goodsPage.getPages());
+            data.put("list", list);
+
+            log.info("Internal 搜索完成：keyword={}, categoryId={}, minPrice={}, maxPrice={}, total={}",
+                    keyword, categoryId, minPrice, maxPrice, goodsPage.getTotal());
+            return Result.ok("请求成功", data);
+        } catch (Exception e) {
+            log.error("Internal 搜索失败：keyword={}, categoryId={}", keyword, categoryId, e);
+            return Result.fail(500, "搜索失败，请稍后重试");
+        }
+    }
+}
 
 
 

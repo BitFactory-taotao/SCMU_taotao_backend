@@ -82,4 +82,6 @@ goods:
 app:
   auth:
     demo-mode: true  # 演示模式开启
+  internal-api:
+    secret: ${INTERNAL_API_SECRET:taotao_internal_api_secret}
 
