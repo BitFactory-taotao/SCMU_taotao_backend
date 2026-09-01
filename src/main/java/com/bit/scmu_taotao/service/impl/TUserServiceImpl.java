@@ -4,8 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.bit.scmu_taotao.client.HttpResponseHandler;
-import com.bit.scmu_taotao.client.HttpResponseHandlerImpl;
 import com.bit.scmu_taotao.client.thread.WebVpnLoginThread;
 import com.bit.scmu_taotao.dto.GoodsEditRequest;
 import com.bit.scmu_taotao.dto.goods.PublisherDTO;
@@ -14,7 +12,6 @@ import com.bit.scmu_taotao.mapper.TUserMapper;
 import com.bit.scmu_taotao.service.*;
 import com.bit.scmu_taotao.util.TokenUtil;
 import com.bit.scmu_taotao.util.UserContext;
-import com.bit.scmu_taotao.util.common.KeyDescription;
 import com.bit.scmu_taotao.util.common.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.CookieStore;
@@ -24,7 +21,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -40,9 +36,6 @@ import static com.bit.scmu_taotao.util.common.KeyDescription.DEFAULT_AVATAR;
 @Service
 public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         implements TUserService {
-
-    @Autowired
-    private RedisService redisService;
 
     @Autowired
     private TokenUtil tokenUtil;
@@ -67,10 +60,9 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
     @Value("${app.auth.demo-mode:false}")
     private boolean demoMode;
 
-    // WebVPN 地址（从配置文件读取或默认值）
-    private static final String WEBVPN_URL = "https://webvpn.scuec.edu.cn/";
-
-    private final HttpResponseHandler httpResponseHandler = new HttpResponseHandlerImpl();
+    // WebVPN 地址（默认值，正式环境可通过配置覆盖）
+    @Value("${webvpn.url:https://webvpn.scuec.edu.cn/}")
+    private String webVpnUrl;
 
     private static final Map<String, Integer> STATUS_STR_TO_INT = Map.of(
             "online", 0, "sold", 1, "offline", 2, "audit", 3
@@ -118,7 +110,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             // 1. 通过 WebVPN 进行身份验证
             CookieStore cookieStore = new BasicCookieStore();
             WebVpnLoginThread loginThread = new WebVpnLoginThread(
-                    userId, password, cookieStore, WEBVPN_URL, redisService
+                    userId, password, cookieStore, webVpnUrl
             );
 
             // 执行同步登录
@@ -157,20 +149,10 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
                 }
             }
 
-            // 4. 序列化 Cookie 并存储到 Redis
-            String cookieKey = KeyDescription.SSFW + userId;
-            try {
-                byte[] serializedCookie = CookieSerialization.serialize(cookieStore);
-                redisService.setWithExpire(cookieKey, serializedCookie, 2, java.util.concurrent.TimeUnit.HOURS);
-                log.info("Cookie 已保存：key={}", cookieKey);
-            } catch (IOException e) {
-                log.error("Cookie 序列化失败：{}", e.getMessage(), e);
-            }
-
-            // 5. 生成 Token
+            // 4. 生成 Token
             String token = tokenUtil.generateToken(userId);
 
-            // 6. 构建符合接口文档的返回数据
+            // 5. 构建符合接口文档的返回数据
             Map<String, Object> userInfo = new HashMap<>();
             userInfo.put("userId", user.getUserId());
             userInfo.put("name", user.getUserName());
@@ -211,10 +193,6 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
 
             // 使 Token 失效
             tokenUtil.invalidateToken(token);
-
-            // 删除 Redis 中的 Cookie
-            String cookieKey = KeyDescription.SSFW + userId;
-            redisService.isExist(cookieKey); // 检查是否存在
 
             log.info("用户登出：userId={}", userId);
             return Result.ok();
@@ -373,6 +351,10 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             String userId = UserContext.getUserId();
             log.info("获取出售的商品列表：userId={}, page={}, size={}, goodsStatus={}", userId, page, size, goodsStatus);
 
+            // 当前用户即商品发布者，查询真实姓名
+            TUser currentUser = this.getById(userId);
+            String currentUserName = currentUser != null && currentUser.getUserName() != null ? currentUser.getUserName() : "未知";
+
             // 查询用户发布的商品列表
             LambdaQueryWrapper<TGoods> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(TGoods::getUserId, userId)
@@ -404,7 +386,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
                     item.put("publishTime", "");
                 }
                 // 查询发布者信息
-                item.put("publisherName", UserContext.getUsername() != null ? UserContext.getUsername() : "未知");
+                item.put("publisherName", currentUserName);
                 item.put("publisherId", goods.getUserId());
                 item.put("goodsStatus", STATUS_INT_TO_STR.getOrDefault(goods.getGoodsStatus(), "未知"));
                 list.add(item);
@@ -581,6 +563,10 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
                 size = 10; // 默认每页10条，最大100条
             }
             log.info("获取预购商品列表：userId={}, page={}, size={}, status={}", userId, page, size, status);
+
+            // 当前用户即发布者，查询真实姓名
+            TUser currentUser = this.getById(userId);
+            String currentUserName = currentUser != null && currentUser.getUserName() != null ? currentUser.getUserName() : "未知";
             // 查询用户发布的预购商品列表
             LambdaQueryWrapper<TGoods> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(TGoods::getUserId, userId)
@@ -621,7 +607,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
                 }
 
                 // 查询发布者信息
-                item.put("publisherName", UserContext.getUsername() != null ? UserContext.getUsername() : "未知");
+                item.put("publisherName", currentUserName);
                 item.put("publisherId", goods.getUserId());
                 item.put("status", STATUS_INT_TO_STR.getOrDefault(goods.getGoodsStatus(), "未知"));
                 list.add(item);

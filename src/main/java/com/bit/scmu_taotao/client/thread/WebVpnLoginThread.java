@@ -1,19 +1,16 @@
 package com.bit.scmu_taotao.client.thread;
 
-import com.bit.scmu_taotao.client.HttpResponseHandler;
-import com.bit.scmu_taotao.client.HttpResponseHandlerImpl;
+import com.bit.scmu_taotao.client.HttpResponseParser;
 import com.bit.scmu_taotao.client.HttpResponseResult;
 import com.bit.scmu_taotao.service.EasyCookieSpecProvider;
-import com.bit.scmu_taotao.service.RedisService;
-import com.bit.scmu_taotao.util.common.KeyDescription;
 import com.bit.scmu_taotao.util.LoginProcessMessage;
 import com.bit.scmu_taotao.util.common.Result;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.CookieStore;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.config.Lookup;
@@ -23,7 +20,6 @@ import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.util.EntityUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -36,8 +32,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
 @Slf4j
-public class WebVpnLoginThread extends Thread {
+public class WebVpnLoginThread {
     private final String userId;
     private final String password;
     private final CookieStore cookieStore;
@@ -50,17 +47,15 @@ public class WebVpnLoginThread extends Thread {
             .setCircularRedirectsAllowed(true)
             .setCookieSpec("easy").build();
     private final String requestUrl;
-    private final RedisService redisService;
     private final String UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0";
-    private final HttpResponseHandler httpResponseHandler = new HttpResponseHandlerImpl();
+    private final HttpResponseParser httpResponseParser = new HttpResponseParser();
 
     //构造方法
-    public WebVpnLoginThread(String userId, String password, CookieStore cookieStore, String requestUrl, RedisService redisService) {
+    public WebVpnLoginThread(String userId, String password, CookieStore cookieStore, String requestUrl) {
         this.userId = userId;
         this.password = password;
         this.cookieStore = cookieStore == null ? new BasicCookieStore() : cookieStore;
         this.requestUrl = requestUrl;
-        this.redisService = redisService;
     }
 
     //创建httpClient
@@ -109,57 +104,16 @@ public class WebVpnLoginThread extends Thread {
         return httpPost;
     }
 
-    /*    @Override
-        public void run() {
-            try(CloseableHttpClient httpClient = createHttpClient()){
-                // TODO fakeIp原来用的openId，改为用username可以吗
-                String fakeIp = (String) redisService.get(KeyDescription.FAKEIP + username);
-                //先发GET拿HTML(httpResponseResult.getContent())
-                HttpGet httpGet = new HttpGet(requestUrl  + "/users/sign_in");
-                httpGet.setHeader("X-Forwarded-For",fakeIp);
-    //            log.info("000000000000"+ httpGet.getFirstHeader("x-forword-for"));
-                HttpResponse httpResponse = httpClient.execute(httpGet);
-                HttpResponseResult httpResponseResult = httpResponseHandler.parse(httpResponse);
-                if ( httpResponseResult.getCode() != 200 && httpResponseResult.getCode() != 302 ) {
-                    throw new LoginException(LoginProcessMessage.IP_BLOCK);
-                }
-                //GET没问题后发POST
-                HttpPost httpPost = createLoginRequest(httpResponseResult.getContent());
-                httpPost.setHeader("X-Forwarded-For",fakeIp);
-                httpClient.execute(httpPost);
-                //发完POST刷新Cookie
-                httpGet.setURI(URI.create(requestUrl + "/vpn_key/update"));
-                httpGet.setHeader("X-Forwarded-For",fakeIp);
-                httpClient.execute(httpGet);
-                //流式实现获取名为_webvpn_key的Cookie
-                if (cookieStore.getCookies().stream().anyMatch(cookie -> cookie.getName().equals("_webvpn_key"))) {
-                    //序列化Cookie存入Redis
-                    redisService.set(KeyDescription.SSFW + openid, CookieSerializtion.serialize(cookieStore));
-                    // TODO 登录后返回token和爬取到的用户名
-                    return;
-                }
-                throw new LoginException(LoginProcessMessage.LOGIN_FAILURE);
-            }catch (IOException e){
-                throw new RuntimeException(e);
-            }
-        }*/
-    //同步登录，与重写异步run方法在代码实现上无太大差别
+    //同步登录
     public Result syncLogin() {
         log.info("开始同步登录:{}", userId);
         try (CloseableHttpClient httpClient = createHttpClient()) {
-            String fakeIp = null;
-            if (redisService != null) {
-                fakeIp = (String) redisService.get(KeyDescription.FAKEIP + userId);
-            }
             //先发GET拿HTML(httpResponseResult.getContent())
             HttpGet httpGet = new HttpGet(requestUrl + "/users/sign_in");
-            if (fakeIp != null) {
-                httpGet.setHeader("X-Forwarded-For", fakeIp);
-            }
             HttpResponseResult httpResponseResult;
             try (CloseableHttpResponse resp = httpClient.execute(httpGet)) {
                 //判断是否被封IP
-                httpResponseResult = httpResponseHandler.parse(resp);
+                httpResponseResult = httpResponseParser.parse(resp);
             }
             if (httpResponseResult.getCode() != 200) {
                 throw new LoginException(LoginProcessMessage.IP_BLOCK);
@@ -167,9 +121,6 @@ public class WebVpnLoginThread extends Thread {
             log.info("GET请求成功，开始POST请求");
             //GET没问题后发POST
             HttpPost httpPost = createLoginRequest(httpResponseResult.getContent());
-            if (fakeIp != null) {
-                httpPost.setHeader("X-Forwarded-For", fakeIp);
-            }
             try (CloseableHttpResponse resp = httpClient.execute(httpPost)) {
                 // 虽然这里不解析内容，但必须消费实体以释放连接
                 EntityUtils.consume(resp.getEntity());
@@ -221,7 +172,7 @@ public class WebVpnLoginThread extends Thread {
         HttpResponseResult result;
         try (CloseableHttpResponse resp = httpClient.execute(homePage)) {
             log.info("[getRealUserName] HTTP 请求执行完成，状态码：{}", resp.getStatusLine().getStatusCode());
-            result = httpResponseHandler.parse(resp);
+            result = httpResponseParser.parse(resp);
         } catch (IOException e) {
             log.error("[getRealUserName] HTTP 请求执行失败，URL: {}, 异常类型：{}", requestUrl + "/", e.getClass().getName(), e);
             throw e;
@@ -255,9 +206,7 @@ public class WebVpnLoginThread extends Thread {
             }
         } catch (Exception e) {
             log.error("[getRealUserName] 解析 HTML 时发生异常", e);
-            e.printStackTrace();
         }
         return "未找到姓名";
     }
 }
-

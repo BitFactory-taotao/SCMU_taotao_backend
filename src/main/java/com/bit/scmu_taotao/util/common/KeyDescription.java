@@ -9,12 +9,6 @@ public class KeyDescription {
 
 //    public static final String DEFAULT_AVATAR = "http://localhost:8080/api/v1/campus-taotao/static/images/default-avatar.png";
     public static final String DEFAULT_AVATAR = "http://218.244.144.34:8080/api/v1/campus-taotao/static/images/default-avatar.png";
-    public static final String SSFW = "ssfw_";
-
-    public static final String LAB = "lab_";
-
-    public static final String TICKET = "ticket_";
-    public static final String FAKEIP = "fakeip_";
     public static final long TRADE_INTENT_EXPIRE_HOURS = 48L;
 
     public static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
