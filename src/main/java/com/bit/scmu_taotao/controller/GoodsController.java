@@ -453,6 +453,7 @@ public class GoodsController {
         return Result.ok("取消收藏成功", null);
     }
 
+    // todo 后续可删掉，保留contactseller即可
     @GetMapping("/{goodsId}/trade")
     public Result contactSeller(@PathVariable("goodsId") @Min(1) int goodsId) {
         String userId = UserContext.getUserId();

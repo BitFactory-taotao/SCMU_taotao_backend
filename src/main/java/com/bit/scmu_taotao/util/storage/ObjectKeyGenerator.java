@@ -24,11 +24,15 @@ public final class ObjectKeyGenerator {
         );
     }
 
-    private static String extractExt(String filename) {
+    public static String extractExt(String filename) {
+        return extractExt(filename, "bin");
+    }
+
+    public static String extractExt(String filename, String defaultExt) {
         if (filename == null || !filename.contains(".")) {
-            return "bin";
+            return defaultExt;
         }
         String ext = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
-        return ext.isBlank() ? "bin" : ext;
+        return ext.isBlank() ? defaultExt : ext;
     }
 }

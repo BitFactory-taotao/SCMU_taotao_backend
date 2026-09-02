@@ -71,9 +71,6 @@ public class ImageUploadServiceImpl implements ImageUploadService {
     }
 
     private String extractExt(String filename) {
-        if (filename == null || !filename.contains(".")) {
-            return "";
-        }
-        return filename.substring(filename.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
+        return ObjectKeyGenerator.extractExt(filename, "");
     }
 }

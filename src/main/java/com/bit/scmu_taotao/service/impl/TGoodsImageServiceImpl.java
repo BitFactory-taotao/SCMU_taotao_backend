@@ -25,6 +25,18 @@ public class TGoodsImageServiceImpl extends ServiceImpl<TGoodsImageMapper, TGood
                 .map(TGoodsImage::getImageUrl)
                 .collect(java.util.stream.Collectors.toList());
     }
+
+    @Override
+    public String getMainImageUrl(Long goodsId) {
+        if (goodsId == null) {
+            return "";
+        }
+        List<TGoodsImage> images = baseMapper.selectByGoodsId(goodsId.intValue());
+        if (images == null || images.isEmpty() || images.get(0).getImageUrl() == null) {
+            return "";
+        }
+        return images.get(0).getImageUrl();
+    }
 }
 
 

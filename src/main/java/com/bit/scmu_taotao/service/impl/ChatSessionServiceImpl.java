@@ -454,16 +454,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
             return;
         }
 
-        ChatMessage chatMessage = new ChatMessage();
-        chatMessage.setChatId(chatId);
-        chatMessage.setSendId(senderId);
-        chatMessage.setReceiveId(receiverId);
-        chatMessage.setMsgType(1);
-        chatMessage.setContentType("TRADE_EVENT");
-        chatMessage.setMsgContent(content);
-        chatMessage.setIsRead(0);
-        chatMessage.setIsDelete(0);
-        chatMessageMapper.insert(chatMessage);
+        insertSystemMessage(chatId, senderId, receiverId, 1, "TRADE_EVENT", content);
 
         ChatSession updateChatSession = new ChatSession();
         updateChatSession.setChatId(chatId);
@@ -477,24 +468,23 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
             return;
         }
 
-        ChatMessage buyerMessage = new ChatMessage();
-        buyerMessage.setChatId(chatId);
-        buyerMessage.setSendId("system");
-        buyerMessage.setReceiveId(buyerId);
-        buyerMessage.setMsgType(0);
-        buyerMessage.setMsgContent("您已开始与商家沟通，请注意文明交流");
-        buyerMessage.setIsRead(0);
-        buyerMessage.setIsDelete(0);
-        chatMessageMapper.insert(buyerMessage);
+        insertSystemMessage(chatId, "system", buyerId, 0, null, "您已开始与商家沟通，请注意文明交流");
+        insertSystemMessage(chatId, "system", sellerId, 0, null, "有用户对您的商品感兴趣，开始了沟通");
+    }
 
-        ChatMessage sellerMessage = new ChatMessage();
-        sellerMessage.setChatId(chatId);
-        sellerMessage.setSendId("system");
-        sellerMessage.setReceiveId(sellerId);
-        sellerMessage.setMsgType(0);
-        sellerMessage.setMsgContent("有用户对您的商品感兴趣，开始了沟通");
-        sellerMessage.setIsRead(0);
-        sellerMessage.setIsDelete(0);
-        chatMessageMapper.insert(sellerMessage);
+    /**
+     * 插入一条系统/交易事件消息
+     */
+    private void insertSystemMessage(Long chatId, String sendId, String receiveId, Integer msgType, String contentType, String content) {
+        ChatMessage chatMessage = new ChatMessage();
+        chatMessage.setChatId(chatId);
+        chatMessage.setSendId(sendId);
+        chatMessage.setReceiveId(receiveId);
+        chatMessage.setMsgType(msgType);
+        chatMessage.setContentType(contentType);
+        chatMessage.setMsgContent(content);
+        chatMessage.setIsRead(0);
+        chatMessage.setIsDelete(0);
+        chatMessageMapper.insert(chatMessage);
     }
 }

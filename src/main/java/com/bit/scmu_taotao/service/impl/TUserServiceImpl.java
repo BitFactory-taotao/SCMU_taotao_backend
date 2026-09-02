@@ -12,6 +12,7 @@ import com.bit.scmu_taotao.mapper.TUserMapper;
 import com.bit.scmu_taotao.service.*;
 import com.bit.scmu_taotao.util.TokenUtil;
 import com.bit.scmu_taotao.util.UserContext;
+import com.bit.scmu_taotao.util.common.GoodsListItemAssembler;
 import com.bit.scmu_taotao.util.common.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.CookieStore;
@@ -308,19 +309,15 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             for (TFavorite favorite : favorites) {
                 TGoods goods = goodsMap.get(favorite.getGoodsId());
                 if (goods == null) continue; // 商品可能被删了
-                Map<String, Object> item = new HashMap<>();
-                item.put("id", goods.getGoodsId());
-                item.put("name", goods.getGoodsName());
-                item.put("remark", goods.getGoodsNote() != null ? goods.getGoodsNote() : "");
-                item.put("price", goods.getPrice());
-
-                // 从 imageMap 里根据 ID 拿
-                item.put("imgUrl", imageMap.getOrDefault(goods.getGoodsId(), ""));
-                item.put("publishTime", goods.getCreateTime());
                 TUser publisher = userMap.get(goods.getUserId());
-                item.put("publisherName", publisher != null ? publisher.getUserName() : "未知");
-                item.put("publisherId", goods.getUserId());
-
+                Map<String, Object> item = GoodsListItemAssembler.buildGoodsRow(
+                        goods.getGoodsId(), goods.getGoodsName(),
+                        goods.getGoodsNote() != null ? goods.getGoodsNote() : "",
+                        goods.getPrice(),
+                        imageMap.getOrDefault(goods.getGoodsId(), ""),
+                        goods.getCreateTime(),
+                        publisher != null ? publisher.getUserName() : "未知",
+                        goods.getUserId());
                 list.add(item);
             }
 
@@ -370,24 +367,16 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             // 组装结果
             List<Map<String, Object>> list = new ArrayList<>();
             for (TGoods goods : goodsList) {
-                Map<String, Object> item = new HashMap<>();
-                item.put("id", goods.getGoodsId());
-                item.put("name", goods.getGoodsName());
-                item.put("remark", goods.getGoodsNote() != null ? goods.getGoodsNote() : "");
-                item.put("price", goods.getPrice());
-
                 // 获取商品主图
                 String mainImg = getGoodsMainImage(goods.getGoodsId());
-                item.put("imgUrl", mainImg != null ? mainImg : "");
-                // 发布时间
-                if (goods.getCreateTime() != null) {
-                    item.put("publishTime", goods.getCreateTime());
-                } else {
-                    item.put("publishTime", "");
-                }
-                // 查询发布者信息
-                item.put("publisherName", currentUserName);
-                item.put("publisherId", goods.getUserId());
+                Map<String, Object> item = GoodsListItemAssembler.buildGoodsRow(
+                        goods.getGoodsId(), goods.getGoodsName(),
+                        goods.getGoodsNote() != null ? goods.getGoodsNote() : "",
+                        goods.getPrice(),
+                        mainImg != null ? mainImg : "",
+                        goods.getCreateTime() != null ? goods.getCreateTime() : "",
+                        currentUserName,
+                        goods.getUserId());
                 item.put("goodsStatus", STATUS_INT_TO_STR.getOrDefault(goods.getGoodsStatus(), "未知"));
                 list.add(item);
             }
@@ -415,13 +404,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
      */
     private String getGoodsMainImage(Long goodsId) {
         try {
-            LambdaQueryWrapper<TGoodsImage> imageQuery = new LambdaQueryWrapper<>();
-            imageQuery.eq(TGoodsImage::getGoodsId, goodsId)
-                    .orderByAsc(TGoodsImage::getSort)
-                    .last("LIMIT 1");
-
-            TGoodsImage goodsImage = goodsImageService.getOne(imageQuery);
-            return goodsImage != null ? goodsImage.getImageUrl() : null;
+            return goodsImageService.getMainImageUrl(goodsId);
         } catch (Exception e) {
             log.error("获取商品图片失败：goodsId={}, error={}", goodsId, e.getMessage());
             return null;
@@ -589,26 +572,14 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             // 组装结果
             List<Map<String, Object>> list = new ArrayList<>();
             for (TGoods goods : goodsList) {
-                Map<String, Object> item = new HashMap<>();
-                item.put("id", goods.getGoodsId());
-                item.put("name", goods.getGoodsName());
-                item.put("remark", goods.getGoodsNote() != null ? goods.getGoodsNote() : "");
-                item.put("price", goods.getPrice());
-
-                // 获取商品主图
-                String mainImg = imageMap.getOrDefault(goods.getGoodsId(), "");
-                item.put("imgUrl", mainImg);
-
-                // 发布时间
-                if (goods.getCreateTime() != null) {
-                    item.put("publishTime", goods.getCreateTime());
-                } else {
-                    item.put("publishTime", "");
-                }
-
-                // 查询发布者信息
-                item.put("publisherName", currentUserName);
-                item.put("publisherId", goods.getUserId());
+                Map<String, Object> item = GoodsListItemAssembler.buildGoodsRow(
+                        goods.getGoodsId(), goods.getGoodsName(),
+                        goods.getGoodsNote() != null ? goods.getGoodsNote() : "",
+                        goods.getPrice(),
+                        imageMap.getOrDefault(goods.getGoodsId(), ""),
+                        goods.getCreateTime() != null ? goods.getCreateTime() : "",
+                        currentUserName,
+                        goods.getUserId());
                 item.put("status", STATUS_INT_TO_STR.getOrDefault(goods.getGoodsStatus(), "未知"));
                 list.add(item);
             }
@@ -1017,15 +988,14 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
     private List<Map<String, Object>> buildGoodsList(List<TGoods> goods, Map<Long, String> imageMap) {
         List<Map<String, Object>> result = new ArrayList<>();
         for (TGoods g : goods) {
-            Map<String, Object> item = new HashMap<>();
-            item.put("id", g.getGoodsId());
-            item.put("name", g.getGoodsName());
-            item.put("remark", g.getGoodsNote() != null ? g.getGoodsNote() : "");
-            item.put("price", g.getPrice());
-            item.put("imgUrl", imageMap.getOrDefault(g.getGoodsId(), ""));
-            item.put("publishTime", g.getCreateTime());
-            item.put("publisherName", "");  // 主页中所有商品都是该用户的，所以直接放空
-            item.put("publisherId", g.getUserId());
+            Map<String, Object> item = GoodsListItemAssembler.buildGoodsRow(
+                    g.getGoodsId(), g.getGoodsName(),
+                    g.getGoodsNote() != null ? g.getGoodsNote() : "",
+                    g.getPrice(),
+                    imageMap.getOrDefault(g.getGoodsId(), ""),
+                    g.getCreateTime(),
+                    "",  // 主页中所有商品都是该用户的，所以直接放空
+                    g.getUserId());
             result.add(item);
         }
         return result;

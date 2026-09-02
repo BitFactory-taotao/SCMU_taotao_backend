@@ -12,4 +12,6 @@ import java.util.List;
 */
 public interface TGoodsImageService extends IService<TGoodsImage> {
     List<String> getGoodsImageUrls(Long goodsId);
+
+    String getMainImageUrl(Long goodsId);
 }

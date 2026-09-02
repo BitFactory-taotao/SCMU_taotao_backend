@@ -581,11 +581,7 @@ public class AdminSolvedItemsServiceImpl implements AdminSolvedItemsService {
      * 获取商品主图
      */
     private String resolveMainImage(Long goodsId) {
-        List<String> imageUrls = resolveGoodsImageUrls(goodsId);
-        if (imageUrls.isEmpty()) {
-            return "";
-        }
-        return imageUrls.get(0);
+        return tGoodsImageService.getMainImageUrl(goodsId);
     }
 
     /**

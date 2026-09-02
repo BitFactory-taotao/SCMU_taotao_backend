@@ -14,6 +14,7 @@ import com.bit.scmu_taotao.mapper.TGoodsImageMapper;
 import com.bit.scmu_taotao.service.*;
 import com.bit.scmu_taotao.mapper.TGoodsMapper;
 import com.bit.scmu_taotao.util.UserContext;
+import com.bit.scmu_taotao.util.common.GoodsListItemAssembler;
 import com.bit.scmu_taotao.util.common.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +35,9 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
         implements TGoodsService {
     @Autowired
     private TGoodsImageMapper tGoodsImageMapper;
+
+    @Autowired
+    private TGoodsImageService tGoodsImageService;
 
     @Autowired
     private RecommendationService recommendationService;
@@ -61,12 +65,6 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
     );
 
     private static final Map<String, String> TAB_TO_CATEGORY_NAME = Map.of(
-            "dormitory", "宿舍用品",
-            "entertainment", "娱乐用品",
-            "study", "学习用品"
-    );
-
-    private static final Map<String, String> AUDIT_CATEGORY_NAME = Map.of(
             "dormitory", "宿舍用品",
             "entertainment", "娱乐用品",
             "study", "学习用品"
@@ -140,18 +138,15 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
             Page<TGoods> goodsPage = this.page(new Page<>(safePage, safeSize), queryWrapper);
 
             List<Map<String, Object>> list = goodsPage.getRecords().stream().map(goods -> {
-                Map<String, Object> row = new HashMap<>();
-                row.put("id", goods.getGoodsId());
-                row.put("name", goods.getGoodsName());
-                row.put("remark", goods.getGoodsNote() == null ? "" : goods.getGoodsNote());
-                row.put("price", goods.getPrice());
-                row.put("imgUrl", getMainImage(goods.getGoodsId()));
-                row.put("publishTime", goods.getCreateTime() == null ? "" : goods.getCreateTime().format(DATE_TIME_FORMATTER));
-
                 TUser publisher = tUserService.getById(goods.getUserId());
-                row.put("publisherName", publisher == null ? "未知" : publisher.getUserName());
-                row.put("publisherId", goods.getUserId());
-                return row;
+                return GoodsListItemAssembler.buildGoodsRow(
+                        goods.getGoodsId(), goods.getGoodsName(),
+                        goods.getGoodsNote() == null ? "" : goods.getGoodsNote(),
+                        goods.getPrice(),
+                        getMainImage(goods.getGoodsId()),
+                        goods.getCreateTime() == null ? "" : goods.getCreateTime().format(DATE_TIME_FORMATTER),
+                        publisher == null ? "未知" : publisher.getUserName(),
+                        goods.getUserId());
             }).collect(Collectors.toList());
 
             Map<String, Object> data = new HashMap<>();
@@ -411,7 +406,7 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
     }
 
     private Integer resolveAuditCategoryId(String category) {
-        String categoryName = AUDIT_CATEGORY_NAME.get(category);
+        String categoryName = TAB_TO_CATEGORY_NAME.get(category);
         if (categoryName == null) {
             return null;
         }
@@ -453,15 +448,14 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
         if (recommendResult.getList() != null) {
             for (RecommendGoodsDTO item : recommendResult.getList()) {
                 String publisherId = item.getPublisherInfo() == null ? null : item.getPublisherInfo().getUserId();
-                Map<String, Object> row = new HashMap<>();
-                row.put("id", item.getGoodsId());
-                row.put("name", item.getGoodsName());
-                row.put("remark", "");
-                row.put("price", item.getPrice());
-                row.put("imgUrl", item.getImageUrl() == null ? "" : item.getImageUrl());
-                row.put("publishTime", item.getCreateTime());
-                row.put("publisherName", item.getPublisherInfo() == null ? "未知" : item.getPublisherInfo().getUserName());
-                row.put("publisherId", publisherId == null ? "" : publisherId);
+                Map<String, Object> row = GoodsListItemAssembler.buildGoodsRow(
+                        item.getGoodsId(), item.getGoodsName(),
+                        "",
+                        item.getPrice(),
+                        item.getImageUrl() == null ? "" : item.getImageUrl(),
+                        item.getCreateTime(),
+                        item.getPublisherInfo() == null ? "未知" : item.getPublisherInfo().getUserName(),
+                        publisherId == null ? "" : publisherId);
                 list.add(row);
             }
         }
@@ -502,18 +496,15 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
         Page<TGoods> goodsPage = this.page(new Page<>(page, size), queryWrapper);
 
         List<Map<String, Object>> list = goodsPage.getRecords().stream().map(goods -> {
-            Map<String, Object> row = new HashMap<>();
-            row.put("id", goods.getGoodsId());
-            row.put("name", goods.getGoodsName());
-            row.put("remark", goods.getGoodsNote() == null ? "" : goods.getGoodsNote());
-            row.put("price", goods.getPrice());
-            row.put("imgUrl", getMainImage(goods.getGoodsId()));
-            row.put("publishTime", goods.getCreateTime() == null ? "" : goods.getCreateTime().format(DATE_TIME_FORMATTER));
-
             TUser publisher = tUserService.getById(goods.getUserId());
-            row.put("publisherName", publisher == null ? "未知" : publisher.getUserName());
-            row.put("publisherId", goods.getUserId());
-            return row;
+            return GoodsListItemAssembler.buildGoodsRow(
+                    goods.getGoodsId(), goods.getGoodsName(),
+                    goods.getGoodsNote() == null ? "" : goods.getGoodsNote(),
+                    goods.getPrice(),
+                    getMainImage(goods.getGoodsId()),
+                    goods.getCreateTime() == null ? "" : goods.getCreateTime().format(DATE_TIME_FORMATTER),
+                    publisher == null ? "未知" : publisher.getUserName(),
+                    goods.getUserId());
         }).collect(Collectors.toList());
 
         Map<String, Object> data = new HashMap<>();
@@ -536,11 +527,7 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
     }
 
     private String getMainImage(Long goodsId) {
-        List<TGoodsImage> images = tGoodsImageMapper.selectByGoodsId(goodsId.intValue());
-        if (images == null || images.isEmpty() || images.get(0).getImageUrl() == null) {
-            return "";
-        }
-        return images.get(0).getImageUrl();
+        return tGoodsImageService.getMainImageUrl(goodsId);
     }
 
     private Set<String> getBlacklistedUserIds(String currentUserId) {
