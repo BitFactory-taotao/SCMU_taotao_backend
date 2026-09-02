@@ -5,6 +5,8 @@ import com.bit.scmu_taotao.dto.admin.*;
 import com.bit.scmu_taotao.entity.*;
 import com.bit.scmu_taotao.mapper.ChatMessageMapper;
 import com.bit.scmu_taotao.service.*;
+import com.bit.scmu_taotao.service.impl.TCreditLogServiceImpl;
+import com.bit.scmu_taotao.service.impl.TTradeServiceImpl;
 import com.bit.scmu_taotao.util.common.Result;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,10 +55,10 @@ class AdminRiskUserControllerTest {
     private TEvaluateService evaluateService;
 
     @Autowired
-    private TTradeService tradeService;
+    private TTradeServiceImpl tradeService;
 
     @Autowired
-    private TCreditLogService creditLogService;
+    private TCreditLogServiceImpl creditLogService;
 
     @Autowired
     private ChatMessageMapper chatMessageMapper;

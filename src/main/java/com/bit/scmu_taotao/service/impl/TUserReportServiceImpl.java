@@ -12,6 +12,7 @@ import com.bit.scmu_taotao.entity.*;
 import com.bit.scmu_taotao.mapper.ChatMessageMapper;
 import com.bit.scmu_taotao.mapper.TUserReportMapper;
 import com.bit.scmu_taotao.service.*;
+import com.bit.scmu_taotao.service.impl.TCreditLogServiceImpl;
 import com.bit.scmu_taotao.util.UserContext;
 import com.bit.scmu_taotao.util.common.Result;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +39,7 @@ public class TUserReportServiceImpl extends ServiceImpl<TUserReportMapper, TUser
     private TUserService tUserService;
 
     @Autowired
-    private TCreditLogService creditLogService;
+    private TCreditLogServiceImpl creditLogService;
 
     @Autowired
     private StompPushService stompPushService;

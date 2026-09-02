@@ -2,7 +2,6 @@ package com.bit.scmu_taotao.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.bit.scmu_taotao.entity.TTrade;
-import com.bit.scmu_taotao.service.TTradeService;
 import com.bit.scmu_taotao.mapper.TTradeMapper;
 import org.springframework.stereotype.Service;
 
@@ -12,8 +11,7 @@ import org.springframework.stereotype.Service;
 * @createDate 2026-03-14 18:49:38
 */
 @Service
-public class TTradeServiceImpl extends ServiceImpl<TTradeMapper, TTrade>
-    implements TTradeService{
+public class TTradeServiceImpl extends ServiceImpl<TTradeMapper, TTrade> {
 
 }
 

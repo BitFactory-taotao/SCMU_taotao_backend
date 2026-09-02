@@ -12,6 +12,7 @@ import com.bit.scmu_taotao.entity.*;
 import com.bit.scmu_taotao.mapper.ChatMessageMapper;
 import com.bit.scmu_taotao.mapper.TGoodsImageMapper;
 import com.bit.scmu_taotao.service.*;
+import com.bit.scmu_taotao.service.impl.TGoodsCategoryServiceImpl;
 import com.bit.scmu_taotao.mapper.TGoodsMapper;
 import com.bit.scmu_taotao.util.UserContext;
 import com.bit.scmu_taotao.util.common.GoodsListItemAssembler;
@@ -43,7 +44,7 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
     private RecommendationService recommendationService;
 
     @Autowired
-    private TGoodsCategoryService tGoodsCategoryService;
+    private TGoodsCategoryServiceImpl tGoodsCategoryService;
 
     @Autowired
     private TUserService tUserService;

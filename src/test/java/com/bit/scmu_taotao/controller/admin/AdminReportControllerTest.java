@@ -10,7 +10,7 @@ import com.bit.scmu_taotao.entity.TCreditLog;
 import com.bit.scmu_taotao.entity.TUser;
 import com.bit.scmu_taotao.entity.TUserReport;
 import com.bit.scmu_taotao.mapper.ChatMessageMapper;
-import com.bit.scmu_taotao.service.TCreditLogService;
+import com.bit.scmu_taotao.service.impl.TCreditLogServiceImpl;
 import com.bit.scmu_taotao.service.TUserReportService;
 import com.bit.scmu_taotao.service.TUserService;
 import com.bit.scmu_taotao.util.common.Result;
@@ -50,7 +50,7 @@ class AdminReportControllerTest {
     private TUserService userService;
 
     @Autowired
-    private TCreditLogService creditLogService;
+    private TCreditLogServiceImpl creditLogService;
 
     @Autowired
     private ChatMessageMapper chatMessageMapper;

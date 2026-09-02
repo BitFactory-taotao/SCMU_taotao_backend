@@ -2,7 +2,6 @@ package com.bit.scmu_taotao.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.bit.scmu_taotao.entity.TFavorite;
-import com.bit.scmu_taotao.service.TFavoriteService;
 import com.bit.scmu_taotao.mapper.TFavoriteMapper;
 import org.springframework.stereotype.Service;
 
@@ -12,8 +11,7 @@ import org.springframework.stereotype.Service;
 * @createDate 2026-03-14 18:49:38
 */
 @Service
-public class TFavoriteServiceImpl extends ServiceImpl<TFavoriteMapper, TFavorite>
-    implements TFavoriteService{
+public class TFavoriteServiceImpl extends ServiceImpl<TFavoriteMapper, TFavorite> {
 
 }
 

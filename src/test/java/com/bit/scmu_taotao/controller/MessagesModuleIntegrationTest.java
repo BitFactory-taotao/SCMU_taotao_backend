@@ -9,7 +9,7 @@ import com.bit.scmu_taotao.entity.TUser;
 import com.bit.scmu_taotao.service.ChatMessageService;
 import com.bit.scmu_taotao.service.ChatSessionService;
 import com.bit.scmu_taotao.service.RedisService;
-import com.bit.scmu_taotao.service.TGoodsCategoryService;
+import com.bit.scmu_taotao.service.impl.TGoodsCategoryServiceImpl;
 import com.bit.scmu_taotao.service.TGoodsService;
 import com.bit.scmu_taotao.service.TUserService;
 import com.bit.scmu_taotao.util.TokenUtil;
@@ -55,7 +55,7 @@ class MessagesModuleIntegrationTest {
     @Autowired private ObjectMapper objectMapper;
     @Autowired private TUserService tUserService;
     @Autowired private TGoodsService tGoodsService;
-    @Autowired private TGoodsCategoryService tGoodsCategoryService;
+    @Autowired private TGoodsCategoryServiceImpl tGoodsCategoryService;
     @Autowired private ChatSessionService chatSessionService;
     @Autowired private ChatMessageService chatMessageService;
     @Autowired private RedisService redisService;

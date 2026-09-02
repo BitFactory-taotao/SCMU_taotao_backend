@@ -14,7 +14,7 @@ import com.bit.scmu_taotao.mapper.ChatSessionMapper;
 import com.bit.scmu_taotao.service.ChatSessionService;
 import com.bit.scmu_taotao.service.RedisService;
 import com.bit.scmu_taotao.service.TGoodsService;
-import com.bit.scmu_taotao.service.TTradeService;
+import com.bit.scmu_taotao.service.impl.TTradeServiceImpl;
 import com.bit.scmu_taotao.service.TUserService;
 import com.bit.scmu_taotao.util.common.Result;
 import lombok.extern.slf4j.Slf4j;
@@ -56,7 +56,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     private RedisService redisService;
 
     @Autowired
-    private TTradeService tTradeService;
+    private TTradeServiceImpl tTradeService;
 
     @Override
     public ChatSession findSessionByUsers(String userId1, String userId2) {

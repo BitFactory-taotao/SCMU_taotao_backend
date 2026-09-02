@@ -6,10 +6,10 @@ import com.bit.scmu_taotao.dto.TradeEvaluateSubmitRequest;
 import com.bit.scmu_taotao.entity.TEvaluate;
 import com.bit.scmu_taotao.entity.TEvaluateImage;
 import com.bit.scmu_taotao.entity.TTrade;
-import com.bit.scmu_taotao.service.TEvaluateImageService;
+import com.bit.scmu_taotao.service.impl.TEvaluateImageServiceImpl;
 import com.bit.scmu_taotao.service.TEvaluateService;
 import com.bit.scmu_taotao.mapper.TEvaluateMapper;
-import com.bit.scmu_taotao.service.TTradeService;
+import com.bit.scmu_taotao.service.impl.TTradeServiceImpl;
 import com.bit.scmu_taotao.util.UserContext;
 import com.bit.scmu_taotao.util.common.Result;
 import lombok.extern.slf4j.Slf4j;
@@ -32,9 +32,9 @@ import java.util.stream.Collectors;
 public class TEvaluateServiceImpl extends ServiceImpl<TEvaluateMapper, TEvaluate>
     implements TEvaluateService{
     @Autowired
-    private TTradeService tradeService;
+    private TTradeServiceImpl tradeService;
     @Autowired
-    private TEvaluateImageService evaluateImageService;
+    private TEvaluateImageServiceImpl evaluateImageService;
 
     @Transactional
     @Override

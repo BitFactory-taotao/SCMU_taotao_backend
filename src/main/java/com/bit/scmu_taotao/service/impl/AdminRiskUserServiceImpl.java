@@ -13,6 +13,7 @@ import com.bit.scmu_taotao.mapper.ChatMessageMapper;
 import com.bit.scmu_taotao.mapper.TAccountAuditLogMapper;
 import com.bit.scmu_taotao.mapper.TUserMapper;
 import com.bit.scmu_taotao.service.*;
+import com.bit.scmu_taotao.service.impl.TCreditLogServiceImpl;
 import com.bit.scmu_taotao.util.common.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,7 +54,7 @@ public class AdminRiskUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
     private TEvaluateService tEvaluateService;
 
     @Autowired
-    private TCreditLogService creditLogService;
+    private TCreditLogServiceImpl creditLogService;
 
     @Autowired
     private ChatSessionService chatSessionService;

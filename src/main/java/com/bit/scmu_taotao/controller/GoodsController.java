@@ -10,6 +10,8 @@ import com.bit.scmu_taotao.dto.goods.PublisherDTO;
 import com.bit.scmu_taotao.dto.goods.SearchRequestDTO;
 import com.bit.scmu_taotao.entity.*;
 import com.bit.scmu_taotao.service.*;
+import com.bit.scmu_taotao.service.impl.TGoodsCategoryServiceImpl;
+import com.bit.scmu_taotao.service.impl.TFavoriteServiceImpl;
 import com.bit.scmu_taotao.service.storage.ObjectStorageService;
 import com.bit.scmu_taotao.util.UserContext;
 import com.bit.scmu_taotao.util.common.Result;
@@ -40,7 +42,7 @@ public class GoodsController {
     @Autowired
     private TUserService tUserService;
     @Autowired
-    private TFavoriteService tFavoriteService;
+    private TFavoriteServiceImpl tFavoriteService;
     @Autowired
     private RecommendationService recommendationService;
     @Autowired
@@ -50,7 +52,7 @@ public class GoodsController {
     @Autowired
     private RedisService redisService;
     @Autowired
-    private TGoodsCategoryService tGoodsCategoryService;
+    private TGoodsCategoryServiceImpl tGoodsCategoryService;
 
     @Autowired
     private ObjectStorageService objectStorageService;

@@ -2,7 +2,6 @@ package com.bit.scmu_taotao.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.bit.scmu_taotao.entity.TCreditLog;
-import com.bit.scmu_taotao.service.TCreditLogService;
 import com.bit.scmu_taotao.mapper.TCreditLogMapper;
 import org.springframework.stereotype.Service;
 
@@ -12,8 +11,7 @@ import org.springframework.stereotype.Service;
 * @createDate 2026-05-20 18:48:56
 */
 @Service
-public class TCreditLogServiceImpl extends ServiceImpl<TCreditLogMapper, TCreditLog>
-    implements TCreditLogService{
+public class TCreditLogServiceImpl extends ServiceImpl<TCreditLogMapper, TCreditLog> {
 
 }
 

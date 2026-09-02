@@ -2,7 +2,7 @@
 //
 //import com.bit.scmu_taotao.dto.upload.UploadImageResponse;
 //import com.bit.scmu_taotao.service.storage.ObjectStorageService;
-//import com.bit.scmu_taotao.service.upload.ImageUploadService;
+//import com.bit.scmu_taotao.service.impl.upload.ImageUploadServiceImpl;
 //import org.junit.jupiter.api.Assumptions;
 //import org.junit.jupiter.api.DisplayName;
 //import org.junit.jupiter.api.Test;
@@ -21,7 +21,7 @@
 //    private static final Path LOCAL_IMAGE = Path.of("D:\\Administrator\\Pictures\\Saved Pictures\\1.png");
 //
 //    @Autowired
-//    private ImageUploadService imageUploadService;
+//    private ImageUploadServiceImpl imageUploadService;
 //
 //    @Autowired
 //    private ObjectStorageService objectStorageService;

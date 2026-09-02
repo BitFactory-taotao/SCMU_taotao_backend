@@ -6,7 +6,7 @@ import com.bit.scmu_taotao.dto.upload.UploadImageResponse;
 import com.bit.scmu_taotao.entity.TGoodsImage;
 import com.bit.scmu_taotao.service.TGoodsImageService;
 import com.bit.scmu_taotao.service.storage.ObjectStorageService;
-import com.bit.scmu_taotao.service.upload.ImageUploadService;
+import com.bit.scmu_taotao.service.impl.upload.ImageUploadServiceImpl;
 import com.bit.scmu_taotao.util.UserContext;
 import com.bit.scmu_taotao.util.common.Result;
 import com.bit.scmu_taotao.util.storage.ObjectKeyParser;
@@ -19,7 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class FileUploadController {
 
-    private final ImageUploadService imageUploadService;
+    private final ImageUploadServiceImpl imageUploadService;
     private final ObjectStorageService objectStorageService;
     private final S3StorageProperties s3StorageProperties;
     private final TGoodsImageService tGoodsImageService;

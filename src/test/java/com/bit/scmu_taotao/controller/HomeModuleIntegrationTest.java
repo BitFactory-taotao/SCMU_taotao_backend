@@ -6,7 +6,7 @@ import com.bit.scmu_taotao.entity.TGoods;
 import com.bit.scmu_taotao.entity.TGoodsCategory;
 import com.bit.scmu_taotao.entity.TUser;
 import com.bit.scmu_taotao.service.TBlacklistService;
-import com.bit.scmu_taotao.service.TGoodsCategoryService;
+import com.bit.scmu_taotao.service.impl.TGoodsCategoryServiceImpl;
 import com.bit.scmu_taotao.service.TGoodsService;
 import com.bit.scmu_taotao.service.TUserService;
 import com.bit.scmu_taotao.util.TokenUtil;
@@ -51,7 +51,7 @@ class HomeModuleIntegrationTest {
     private TGoodsService tGoodsService;
 
     @Autowired
-    private TGoodsCategoryService tGoodsCategoryService;
+    private TGoodsCategoryServiceImpl tGoodsCategoryService;
 
     @Autowired
     private TUserService tUserService;

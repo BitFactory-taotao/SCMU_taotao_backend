@@ -12,8 +12,8 @@ import com.bit.scmu_taotao.entity.TGoodsCategory;
 import com.bit.scmu_taotao.entity.TUser;
 import com.bit.scmu_taotao.mapper.ChatMessageMapper;
 import com.bit.scmu_taotao.service.ChatSessionService;
-import com.bit.scmu_taotao.service.TFavoriteService;
-import com.bit.scmu_taotao.service.TGoodsCategoryService;
+import com.bit.scmu_taotao.service.impl.TFavoriteServiceImpl;
+import com.bit.scmu_taotao.service.impl.TGoodsCategoryServiceImpl;
 import com.bit.scmu_taotao.service.TGoodsService;
 import com.bit.scmu_taotao.service.TUserService;
 import com.bit.scmu_taotao.util.UserContext;
@@ -54,10 +54,10 @@ class GoodsControllerTest {
     private TUserService userService;
 
     @Autowired
-    private TGoodsCategoryService categoryService;
+    private TGoodsCategoryServiceImpl categoryService;
 
     @Autowired
-    private TFavoriteService favoriteService;
+    private TFavoriteServiceImpl favoriteService;
 
     @Autowired
     private ChatSessionService chatSessionService;

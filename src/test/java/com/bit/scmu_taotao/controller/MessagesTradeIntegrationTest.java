@@ -8,9 +8,9 @@ import com.bit.scmu_taotao.entity.TTrade;
 import com.bit.scmu_taotao.entity.TUser;
 import com.bit.scmu_taotao.service.ChatSessionService;
 import com.bit.scmu_taotao.service.RedisService;
-import com.bit.scmu_taotao.service.TGoodsCategoryService;
+import com.bit.scmu_taotao.service.impl.TGoodsCategoryServiceImpl;
 import com.bit.scmu_taotao.service.TGoodsService;
-import com.bit.scmu_taotao.service.TTradeService;
+import com.bit.scmu_taotao.service.impl.TTradeServiceImpl;
 import com.bit.scmu_taotao.service.TUserService;
 import com.bit.scmu_taotao.util.TokenUtil;
 import com.bit.scmu_taotao.util.common.Result;
@@ -52,7 +52,7 @@ class MessagesTradeIntegrationTest {
     private TGoodsService tGoodsService;
 
     @Autowired
-    private TGoodsCategoryService tGoodsCategoryService;
+    private TGoodsCategoryServiceImpl tGoodsCategoryService;
 
     @Autowired
     private ChatSessionService chatSessionService;
@@ -64,7 +64,7 @@ class MessagesTradeIntegrationTest {
     private TokenUtil tokenUtil;
 
     @Autowired
-    private TTradeService tTradeService;
+    private TTradeServiceImpl tTradeService;
 
     private String buyerId;
     private String sellerId;

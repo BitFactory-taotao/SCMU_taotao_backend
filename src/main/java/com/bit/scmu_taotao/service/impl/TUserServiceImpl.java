@@ -10,6 +10,9 @@ import com.bit.scmu_taotao.dto.goods.PublisherDTO;
 import com.bit.scmu_taotao.entity.*;
 import com.bit.scmu_taotao.mapper.TUserMapper;
 import com.bit.scmu_taotao.service.*;
+import com.bit.scmu_taotao.service.impl.TEvaluateImageServiceImpl;
+import com.bit.scmu_taotao.service.impl.TTradeServiceImpl;
+import com.bit.scmu_taotao.service.impl.TFavoriteServiceImpl;
 import com.bit.scmu_taotao.util.TokenUtil;
 import com.bit.scmu_taotao.util.UserContext;
 import com.bit.scmu_taotao.util.common.GoodsListItemAssembler;
@@ -42,7 +45,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
     private TokenUtil tokenUtil;
 
     @Autowired
-    private TFavoriteService favoriteService;
+    private TFavoriteServiceImpl favoriteService;
 
     @Autowired
     private TGoodsService goodsService;
@@ -53,11 +56,11 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
     @Autowired
     private TGoodsImageService goodsImageService;
     @Autowired
-    private TTradeService tradeService;
+    private TTradeServiceImpl tradeService;
     @Autowired
     private TEvaluateService evaluateService;
     @Autowired
-    private TEvaluateImageService evaluateImageService;
+    private TEvaluateImageServiceImpl evaluateImageService;
     @Value("${app.auth.demo-mode:false}")
     private boolean demoMode;
 

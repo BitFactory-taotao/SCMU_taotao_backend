@@ -2,7 +2,6 @@ package com.bit.scmu_taotao.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.bit.scmu_taotao.entity.TGoodsCategory;
-import com.bit.scmu_taotao.service.TGoodsCategoryService;
 import com.bit.scmu_taotao.mapper.TGoodsCategoryMapper;
 import org.springframework.stereotype.Service;
 
@@ -12,8 +11,7 @@ import org.springframework.stereotype.Service;
 * @createDate 2026-03-14 18:49:38
 */
 @Service
-public class TGoodsCategoryServiceImpl extends ServiceImpl<TGoodsCategoryMapper, TGoodsCategory>
-    implements TGoodsCategoryService{
+public class TGoodsCategoryServiceImpl extends ServiceImpl<TGoodsCategoryMapper, TGoodsCategory> {
 
 }
 

@@ -3,6 +3,9 @@ package com.bit.scmu_taotao.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bit.scmu_taotao.entity.*;
 import com.bit.scmu_taotao.service.*;
+import com.bit.scmu_taotao.service.impl.TTradeServiceImpl;
+import com.bit.scmu_taotao.service.impl.TGoodsCategoryServiceImpl;
+import com.bit.scmu_taotao.service.impl.TFavoriteServiceImpl;
 import com.bit.scmu_taotao.util.common.Result;
 import com.bit.scmu_taotao.util.UserContext;
 import org.junit.jupiter.api.AfterEach;
@@ -35,16 +38,16 @@ class UserControllerTest {
     private TGoodsService tGoodsService;
 
     @Autowired
-    private TGoodsCategoryService tGoodsCategoryService;
+    private TGoodsCategoryServiceImpl tGoodsCategoryService;
 
     @Autowired
     private GoodsController goodsController;
 
     @Autowired
-    private TFavoriteService tFavoriteService;
+    private TFavoriteServiceImpl tFavoriteService;
 
     @Autowired
-    private TTradeService tTradeService;
+    private TTradeServiceImpl tTradeService;
 
     @Autowired
     private TEvaluateService tEvaluateService;
