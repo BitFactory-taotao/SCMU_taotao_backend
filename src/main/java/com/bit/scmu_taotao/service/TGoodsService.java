@@ -46,4 +46,14 @@ public interface TGoodsService extends IService<TGoods> {
     Result approveAuditGoods(List<Long> goodsIds);
 
     Result rejectAuditGoods(List<Long> goodsIds, String reason);
+
+    Result publishGoods(com.bit.scmu_taotao.dto.goods.GoodsRequestDTO request);
+
+    Result saveDraft(com.bit.scmu_taotao.dto.goods.GoodsRequestDTO request);
+
+    Result getDraftList();
+
+    Result getDraftDetail(String draftId);
+
+    Result deleteDraft(String draftId);
 }

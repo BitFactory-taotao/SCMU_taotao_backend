@@ -1,6 +1,7 @@
 package com.bit.scmu_taotao.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.bit.scmu_taotao.dto.goods.GoodsRequestDTO;
 import com.bit.scmu_taotao.entity.*;
 import com.bit.scmu_taotao.service.*;
 import com.bit.scmu_taotao.service.impl.TTradeServiceImpl;
@@ -378,16 +379,16 @@ class UserControllerTest {
         String originalUserId = UserContext.getUserId();
         try {
             UserContext.setUserId(ownerId);
-            Map<String, Object> request = new HashMap<>();
-            request.put("name", "测试商品" + index);
-            request.put("desc", "这是测试商品描述");
-            request.put("remark", "测试备注");
-            request.put("price", 99.99);
-            request.put("purpose", "宿舍");
-            request.put("exchangeAddr", "学校门口");
-            request.put("imgUrls", List.of());
-            request.put("type", type);
-            request.put("category", TEST_CATEGORY);
+            GoodsRequestDTO request = new GoodsRequestDTO();
+            request.setName("测试商品" + index);
+            request.setDesc("这是测试商品描述");
+            request.setRemark("测试备注");
+            request.setPrice(99.99);
+            request.setPurpose("宿舍");
+            request.setExchangeAddr("学校门口");
+            request.setImgUrls(List.of());
+            request.setType(type);
+            request.setCategory(TEST_CATEGORY);
             return goodsController.publishGoods(request);
         } finally {
             UserContext.setUserId(originalUserId);

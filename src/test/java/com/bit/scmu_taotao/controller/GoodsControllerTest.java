@@ -3,6 +3,7 @@ package com.bit.scmu_taotao.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bit.scmu_taotao.dto.goods.GoodsResponseDTO;
 import com.bit.scmu_taotao.dto.goods.PublisherDTO;
+import com.bit.scmu_taotao.dto.goods.GoodsRequestDTO;
 import com.bit.scmu_taotao.dto.goods.SearchRequestDTO;
 import com.bit.scmu_taotao.entity.ChatMessage;
 import com.bit.scmu_taotao.entity.ChatSession;
@@ -137,16 +138,16 @@ class GoodsControllerTest {
         String originalUserId = UserContext.getUserId();
         try {
             UserContext.setUserId(ownerId);
-            Map<String, Object> request = new HashMap<>();
-            request.put("name", name);
-            request.put("desc", "测试商品描述");
-            request.put("remark", "测试备注");
-            request.put("price", 66.6);
-            request.put("purpose", "宿舍使用");
-            request.put("exchangeAddr", "宿舍楼下");
-            request.put("imgUrls", List.of());
-            request.put("type", type);
-            request.put("category", CATEGORY);
+            GoodsRequestDTO request = new GoodsRequestDTO();
+            request.setName(name);
+            request.setDesc("测试商品描述");
+            request.setRemark("测试备注");
+            request.setPrice(66.6);
+            request.setPurpose("宿舍使用");
+            request.setExchangeAddr("宿舍楼下");
+            request.setImgUrls(List.of());
+            request.setType(type);
+            request.setCategory(CATEGORY);
             Result result = goodsController.publishGoods(request);
             Map<String, Object> data = okData(result);
             return ((Number) data.get("goodsId")).longValue();
@@ -203,12 +204,12 @@ class GoodsControllerTest {
     @DisplayName("publishGoods: 未登录时返回 401")
     void testPublishWithoutLogin() {
         UserContext.remove();
-        Map<String, Object> request = new HashMap<>();
-        request.put("name", "未登录商品");
-        request.put("type", "sell");
-        request.put("category", CATEGORY);
-        request.put("price", 10.0);
-        request.put("imgUrls", List.of());
+        GoodsRequestDTO request = new GoodsRequestDTO();
+        request.setName("未登录商品");
+        request.setType("sell");
+        request.setCategory(CATEGORY);
+        request.setPrice(10.0);
+        request.setImgUrls(List.of());
         Result result = goodsController.publishGoods(request);
         assertEquals(401, result.getCode());
     }
@@ -432,15 +433,15 @@ class GoodsControllerTest {
     @Test
     @DisplayName("草稿: 新建→查询详情→删除 全流程")
     void testDraftLifecycle() {
-        Map<String, Object> request = new HashMap<>();
-        request.put("name", "UT-草稿商品");
-        request.put("desc", "草稿描述");
-        request.put("remark", "草稿备注");
-        request.put("price", 88.8);
-        request.put("purpose", "测试");
-        request.put("exchangeAddr", "学校");
-        request.put("imgUrls", List.of());
-        request.put("type", "sell");
+        GoodsRequestDTO request = new GoodsRequestDTO();
+        request.setName("UT-草稿商品");
+        request.setDesc("草稿描述");
+        request.setRemark("草稿备注");
+        request.setPrice(88.8);
+        request.setPurpose("测试");
+        request.setExchangeAddr("学校");
+        request.setImgUrls(List.of());
+        request.setType("sell");
 
         Result saveResult = goodsController.saveDraft(request);
         Map<String, Object> saveData = okData(saveResult);
@@ -463,20 +464,20 @@ class GoodsControllerTest {
     @Test
     @DisplayName("草稿: 更新已有草稿")
     void testDraftUpdate() {
-        Map<String, Object> request = new HashMap<>();
-        request.put("name", "UT-更新前草稿");
-        request.put("price", 10.0);
-        request.put("type", "sell");
-        request.put("imgUrls", List.of());
+        GoodsRequestDTO request = new GoodsRequestDTO();
+        request.setName("UT-更新前草稿");
+        request.setPrice(10.0);
+        request.setType("sell");
+        request.setImgUrls(List.of());
         Result saveResult = goodsController.saveDraft(request);
         String draftId = (String) okData(saveResult).get("draftId");
 
-        Map<String, Object> updateRequest = new HashMap<>();
-        updateRequest.put("draftId", draftId);
-        updateRequest.put("name", "UT-更新后草稿");
-        updateRequest.put("price", 20.0);
-        updateRequest.put("type", "sell");
-        updateRequest.put("imgUrls", List.of());
+        GoodsRequestDTO updateRequest = new GoodsRequestDTO();
+        updateRequest.setDraftId(draftId);
+        updateRequest.setName("UT-更新后草稿");
+        updateRequest.setPrice(20.0);
+        updateRequest.setType("sell");
+        updateRequest.setImgUrls(List.of());
         Result updateResult = goodsController.saveDraft(updateRequest);
         assertEquals(200, updateResult.getCode());
     }

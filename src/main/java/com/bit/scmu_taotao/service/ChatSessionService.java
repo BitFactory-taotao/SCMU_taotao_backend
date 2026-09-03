@@ -20,13 +20,6 @@ public interface ChatSessionService extends IService<ChatSession> {
 
     Result listMySessions(String userId, Integer page, Integer size);
 
-    Result initiateTrade(Long goodsId, String userId);
-
     Result contactSeller(Long goodsId, String userId);
 
-    Result withdrawTradeRequest(Long goodsId, String buyerId);
-
-    Result rejectTradeRequest(Long goodsId, String buyerId, String sellerId);
-
-    Result confirmTrade(Long goodsId, String buyerId, String sellerId);
 }

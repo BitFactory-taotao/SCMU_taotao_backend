@@ -1,5 +1,6 @@
 package com.bit.scmu_taotao.service.impl;
 
+import cn.hutool.core.lang.UUID;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -9,7 +10,11 @@ import com.bit.scmu_taotao.dto.admin.GoodsAuditListItemDTO;
 import com.bit.scmu_taotao.dto.recommend.RecommendGoodsDTO;
 import com.bit.scmu_taotao.dto.recommend.RecommendListResponseDTO;
 import com.bit.scmu_taotao.entity.*;
+import com.bit.scmu_taotao.config.storage.S3StorageProperties;
+import com.bit.scmu_taotao.dto.goods.GoodsRequestDTO;
 import com.bit.scmu_taotao.mapper.ChatMessageMapper;
+import com.bit.scmu_taotao.service.storage.ObjectStorageService;
+import com.bit.scmu_taotao.util.storage.ObjectKeyParser;
 import com.bit.scmu_taotao.mapper.TGoodsImageMapper;
 import com.bit.scmu_taotao.service.*;
 import com.bit.scmu_taotao.service.impl.TGoodsCategoryServiceImpl;
@@ -23,6 +28,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -60,6 +66,18 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
 
     @Autowired
     private ChatSessionService chatSessionService;
+
+    @Autowired
+    private RedisService redisService;
+
+    @Autowired
+    private S3StorageProperties s3StorageProperties;
+
+    @Autowired
+    private ObjectStorageService objectStorageService;
+
+    @Autowired
+    private SensitiveWordService sensitiveWordService;
 
     private static final Set<String> VALID_TABS = Set.of(
             "recommend", "dormitory", "entertainment", "study", "pre-order"
@@ -547,6 +565,208 @@ public class TGoodsServiceImpl extends ServiceImpl<TGoodsMapper, TGoods>
                 .map(TBlacklist::getBlackUserId)
                 .filter(id -> id != null && !id.isBlank())
                 .collect(Collectors.toCollection(HashSet::new));
+    }
+
+    @Override
+    public Result publishGoods(GoodsRequestDTO request) {
+        // 1. 获取当前登录用户的 userId
+        String userId = UserContext.getUserId();
+        if (userId == null) {
+            return Result.fail(401, "用户未登录");
+        }
+
+        // 2. 解析请求参数
+        String name = request.getName();
+        String desc = request.getDesc();
+        String remark = request.getRemark();
+        double price = request.getPrice();
+        String purpose = request.getPurpose();
+        String exchangeAddr = request.getExchangeAddr();
+        List<String> imgUrls = request.getImgUrls();
+        String type = request.getType();
+        String category = request.getCategory();
+        String draftId = request.getDraftId(); // 草稿ID，发布成功后删除草稿
+
+        // 3. 查询商品分类
+        QueryWrapper<TGoodsCategory> wrapper = new QueryWrapper<>();
+        wrapper.eq("category_name", category);
+        TGoodsCategory goodsCategory = tGoodsCategoryService.getOne(wrapper);
+        if (goodsCategory == null) {
+            return Result.fail("商品分类不存在");
+        }
+        log.info("开始检测商品信息敏感词");
+        sensitiveWordService.validateGoods(name, desc, remark, purpose, exchangeAddr);
+
+        // 4. 创建商品实体
+        TGoods goods = new TGoods();
+        goods.setUserId(userId);
+        goods.setCategoryId(goodsCategory.getCategoryId());
+        goods.setGoodsName(name);
+        goods.setGoodsDesc(desc);
+        goods.setGoodsNote(remark);
+        goods.setPrice(java.math.BigDecimal.valueOf(price));
+        goods.setUseScene(purpose);
+        goods.setExchangePlace(exchangeAddr);
+        goods.setGoodsType("sell".equals(type) ? 1 : 2); // 1=出售, 2=预购
+        goods.setGoodsStatus(0);
+        goods.setIsAudited(0);
+        goods.setRejectReason(null);
+        goods.setIsDelete(0);
+
+        // 5. 保存商品
+        this.save(goods);
+
+        // 6. 保存商品图片
+        if (imgUrls != null && !imgUrls.isEmpty()) {
+            int sort = 1;
+            for (String imgUrl : imgUrls) {
+                if (imgUrl == null || imgUrl.isBlank()) {
+                    continue;
+                }
+                String objectKey = ObjectKeyParser.extractObjectKey(imgUrl, s3StorageProperties.getBucket());
+                if (objectKey == null || objectKey.isBlank()) {
+                    continue;
+                }
+                TGoodsImage goodsImage = new TGoodsImage();
+                goodsImage.setGoodsId(goods.getGoodsId());
+                goodsImage.setImageUrl(imgUrl);
+                goodsImage.setSort(sort++);
+                tGoodsImageService.save(goodsImage);
+            }
+        }
+
+        // 7. 发布成功后删除对应草稿
+        if (draftId != null && !draftId.isEmpty()) {
+            String draftKey = "goods_draft:" + userId + ":" + draftId;
+            String draftIdsKey = "goods_draft:" + userId + ":ids";
+            redisService.removeFromSet(draftIdsKey, draftId);
+            redisService.delete(draftKey);
+        }
+
+        // 8. 构建响应数据
+        Map<String, Object> data = new HashMap<>();
+        data.put("goodsId", goods.getGoodsId());
+        data.put("imgUrls", imgUrls);
+
+        return Result.ok("发布成功，平台将进行合规审核", data);
+    }
+
+    @Override
+    public Result saveDraft(GoodsRequestDTO request) {
+        // 1. 获取当前登录用户的 userId
+        String userId = UserContext.getUserId();
+        if (userId == null) {
+            return Result.fail(401, "用户未登录");
+        }
+
+        // 2. 仅保存草稿需要的字段，避免把 category/draftId 一起写入 Redis
+        GoodsRequestDTO goodsRequest = new GoodsRequestDTO();
+        goodsRequest.setName(request.getName());
+        goodsRequest.setDesc(request.getDesc());
+        goodsRequest.setRemark(request.getRemark());
+        goodsRequest.setPrice(request.getPrice());
+        goodsRequest.setPurpose(request.getPurpose());
+        goodsRequest.setExchangeAddr(request.getExchangeAddr());
+        goodsRequest.setImgUrls(request.getImgUrls());
+        goodsRequest.setType(request.getType());
+
+        String draftId = request.getDraftId();
+
+        // 3. 判断是新建还是修改
+        if (draftId == null || draftId.isEmpty()) {
+            draftId = UUID.randomUUID().toString();
+            String draftKey = "goods_draft:" + userId + ":" + draftId;
+            String draftIdsKey = "goods_draft:" + userId + ":ids";
+
+            redisService.setWithExpire(draftKey, goodsRequest, 24, TimeUnit.HOURS);
+            redisService.addToSet(draftIdsKey, draftId);
+            redisService.setExpire(draftIdsKey, 24, TimeUnit.HOURS);
+        } else {
+            String draftKey = "goods_draft:" + userId + ":" + draftId;
+            if (redisService.get(draftKey) == null) {
+                return Result.fail(404, "草稿不存在或已过期");
+            }
+            redisService.setWithExpire(draftKey, goodsRequest, 24, TimeUnit.HOURS);
+        }
+
+        // 4. 构建响应数据
+        Map<String, Object> data = new HashMap<>();
+        data.put("draftId", draftId);
+
+        return Result.ok("草稿保存成功", data);
+    }
+
+    @Override
+    public Result getDraftList() {
+        String userId = UserContext.getUserId();
+        if (userId == null) {
+            return Result.fail(401, "用户未登录");
+        }
+
+        String draftIdsKey = "goods_draft:" + userId + ":ids";
+        // TODO 返回简要信息用于列表显示
+        Set<Object> draftIds = redisService.getSetMembers(draftIdsKey);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("draftIds", draftIds);
+
+        return Result.ok("获取草稿列表成功", data);
+    }
+
+    @Override
+    public Result getDraftDetail(String draftId) {
+        String userId = UserContext.getUserId();
+        if (userId == null) {
+            return Result.fail(401, "用户未登录");
+        }
+
+        String draftKey = "goods_draft:" + userId + ":" + draftId;
+        GoodsRequestDTO draft = (GoodsRequestDTO) redisService.get(draftKey);
+        if (draft == null) {
+            return Result.fail(404, "草稿不存在或已过期");
+        }
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("draft", draft);
+
+        return Result.ok("获取草稿详情成功", data);
+    }
+
+    @Override
+    public Result deleteDraft(String draftId) {
+        String userId = UserContext.getUserId();
+        if (userId == null) {
+            return Result.fail(401, "用户未登录");
+        }
+
+        String draftKey = "goods_draft:" + userId + ":" + draftId;
+        String draftIdsKey = "goods_draft:" + userId + ":ids";
+
+        // 先拿草稿内容，用于清理图片
+        Object draftObj = redisService.get(draftKey);
+        if (draftObj instanceof GoodsRequestDTO draft && draft.getImgUrls() != null) {
+            for (String imageUrl : draft.getImgUrls()) {
+                String objectKey = ObjectKeyParser.extractObjectKey(imageUrl, s3StorageProperties.getBucket());
+                if (objectKey == null || objectKey.isBlank()) {
+                    continue;
+                }
+                // 仅允许删除当前用户目录，避免误删
+                if (!objectKey.startsWith("user/" + userId + "/")) {
+                    log.warn("skip deleting non-user-owned object, userId={}, key={}", userId, objectKey);
+                    continue;
+                }
+                try {
+                    objectStorageService.deleteObject(objectKey);
+                } catch (Exception e) {
+                    // 删除失败不阻断草稿删除，避免接口整体失败
+                    log.warn("failed to delete draft image, userId={}, key={}", userId, objectKey, e);
+                }
+            }
+        }
+        redisService.removeFromSet(draftIdsKey, draftId);
+        redisService.delete(draftKey);
+
+        return Result.ok("删除草稿成功", null);
     }
 }
 

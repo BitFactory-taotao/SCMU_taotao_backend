@@ -47,4 +47,14 @@ public class GoodsRequestDTO {
      * 类型（sell/buy）
      */
     private String type;
+
+    /**
+     * 分类名（发布时用于定位分类）
+     */
+    private String category;
+
+    /**
+     * 草稿ID（发布时指定则删除对应草稿）
+     */
+    private String draftId;
 }

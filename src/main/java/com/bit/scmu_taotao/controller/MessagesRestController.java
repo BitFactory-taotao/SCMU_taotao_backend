@@ -4,6 +4,7 @@ import com.bit.scmu_taotao.dto.chat.MessageSendMediaRequest;
 import com.bit.scmu_taotao.dto.chat.MessageSendRequest;
 import com.bit.scmu_taotao.service.ChatMessageService;
 import com.bit.scmu_taotao.service.ChatSessionService;
+import com.bit.scmu_taotao.service.TradeService;
 import com.bit.scmu_taotao.util.UserContext;
 import com.bit.scmu_taotao.util.common.Result;
 import jakarta.validation.Valid;
@@ -24,6 +25,9 @@ public class MessagesRestController {
 
     @Autowired
     private ChatMessageService chatMessageService;
+
+    @Autowired
+    private TradeService tradeService;
 
     @GetMapping
     public Result listMessages(@RequestParam(defaultValue = "1") @Min(1) Integer page,
@@ -72,7 +76,7 @@ public class MessagesRestController {
         if (userId == null) {
             return Result.fail(401, "用户未登录");
         }
-        return chatSessionService.initiateTrade(goodsId, userId);
+        return tradeService.initiateTrade(goodsId, userId);
     }
 
     @PostMapping("/goods/{goodsId}/contact")
