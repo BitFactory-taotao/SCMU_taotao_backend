@@ -12,14 +12,6 @@ spring:
       port: 6379
       password: ${REDIS_PASSWORD:taotao_redis_pwd}
 
-test-only:
-  auth:
-    enabled: true
-    secret: bitscmutaotao
 app:
   auth:
-    demo-mode: false  # 演示模式开启
-
-
-
-
+    demo-mode: false  # test profile 下走 WebVPN 真实登录
